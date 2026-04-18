@@ -19,7 +19,7 @@ dependencies = [
 ml = ["transformers>=4.45.0", "torch>=2.0.0"]
 chain = ["web3>=7.0.0"]
 ocr = ["pytesseract>=0.3.10"]
-audio = ["openai-whisper>=20231117"]
+audio = ["openai-whisper>=20250625"]
 pdf-gen = ["reportlab>=4.0.0"]
 demo = ["alpaca-py>=0.43.2"]
 dev = ["pytest>=8.0.0", "httpx>=0.27.0", "ruff>=0.8.0", "bandit>=1.8.0"]
