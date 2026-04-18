@@ -243,22 +243,16 @@ function Scanner() {
 function NetworkFeed() {
   const [detections, setDetections] = useState([])
   const [stats, setStats] = useState(null)
-  const [quorum, setQuorum] = useState(null)
-  const [threatMap, setThreatMap] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dRes, sRes, qRes, tRes] = await Promise.all([
+        const [dRes, sRes] = await Promise.all([
           fetch(`${API}/detections?limit=20`),
           fetch(`${API}/stats`),
-          fetch(`${API}/v1/quorum/status`).catch(() => null),
-          fetch(`${API}/v1/threat-map`).catch(() => null),
         ])
         if (dRes.ok) setDetections(await dRes.json())
         if (sRes.ok) setStats(await sRes.json())
-        if (qRes && qRes.ok) setQuorum(await qRes.json())
-        if (tRes && tRes.ok) setThreatMap(await tRes.json())
       } catch {}
     }
     fetchData()
@@ -268,25 +262,6 @@ function NetworkFeed() {
 
   return (
     <div className="space-y-6">
-      {(quorum || threatMap) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {quorum && (
-            <div className="bg-violet-950/30 border border-violet-800/40 rounded-lg p-3 text-sm">
-              <div className="text-xs text-violet-400 uppercase tracking-wider mb-1">Consensus (K-of-N)</div>
-              <div className="font-mono text-zinc-200">
-                {quorum.k}/{quorum.n} · accepted {quorum.accepted}
-              </div>
-              {quorum.note && <div className="text-[10px] text-zinc-500 mt-1">{quorum.note}</div>}
-            </div>
-          )}
-          {threatMap && (
-            <div className="bg-zinc-900/50 border border-zinc-700/50 rounded-lg p-3 text-sm">
-              <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Threat map</div>
-              <div className="text-zinc-400 text-xs">{threatMap.note || 'Nodes & edges from poller'}</div>
-            </div>
-          )}
-        </div>
-      )}
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-4 gap-3">

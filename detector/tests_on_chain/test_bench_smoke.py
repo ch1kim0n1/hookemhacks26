@@ -10,7 +10,7 @@ import random
 
 from bench.attack_corpus import HISTORICAL_ATTACKS
 from bench.replay import replay_attack, replay_benign
-from detector.on_chain.operator import Operator
+from detection_engine.operator import Operator
 
 
 def test_bench_attack_corpus_is_non_empty_and_well_formed() -> None:

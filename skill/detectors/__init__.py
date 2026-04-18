@@ -1,3 +1,3 @@
-from detector.verdict import detect
+from .pipeline import detect
 
 __all__ = ["detect"]

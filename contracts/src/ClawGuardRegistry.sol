@@ -1,25 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity ^0.8.20;
 
-/// @notice Optional x402 / bounty hook (no-op if unset)
-interface IBountyHook {
-    function onAttackPublished(bytes32 patternHash, address reporter) external;
-}
-
-/// @title ThreatRegistry — on-chain threat intelligence for ClawGuard / SENTINEL
+/// @title ClawGuardRegistry — on-chain threat intelligence sharing for AI agents
 /// @notice Stores hashed attack patterns so agents across instances can share threat intel
-contract ThreatRegistry {
-    address public owner;
-
-    constructor() {
-        owner = msg.sender;
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "ThreatRegistry: not owner");
-        _;
-    }
-
+contract ClawGuardRegistry {
     struct Attack {
         bytes32 patternHash;
         string category;
@@ -31,16 +15,10 @@ contract ThreatRegistry {
 
     Attack[] public attacks;
 
+    // Reporter reputation tracking
     mapping(address => uint256) public reportCount;
     mapping(address => uint256) public firstReport;
     mapping(address => uint256) public lastReport;
-
-    /// @notice SENTINEL-compatible: fast lookup for `SentinelGuard`
-    mapping(bytes32 => bool) public knownPattern;
-
-    address public bountyHook;
-
-    event BountyHookUpdated(address indexed previous, address indexed current);
 
     event AttackPublished(
         bytes32 indexed patternHash,
@@ -49,6 +27,10 @@ contract ThreatRegistry {
         uint256 timestamp
     );
 
+    /// @notice Publish a new attack pattern to the registry
+    /// @param patternHash SHA-256 hash of the attack content
+    /// @param category Attack category (e.g. "instruction_override", "role_override")
+    /// @param sampleRedacted Redacted sample of the attack for context (max 200 chars)
     function publishAttack(
         bytes32 patternHash,
         string calldata category,
@@ -63,27 +45,18 @@ contract ThreatRegistry {
             blockNumber: block.number
         }));
 
+        // Update reporter stats
         if (firstReport[msg.sender] == 0) {
             firstReport[msg.sender] = block.timestamp;
         }
         lastReport[msg.sender] = block.timestamp;
         reportCount[msg.sender]++;
 
-        knownPattern[patternHash] = true;
-
         emit AttackPublished(patternHash, category, msg.sender, block.timestamp);
-
-        if (bountyHook != address(0)) {
-            IBountyHook(bountyHook).onAttackPublished(patternHash, msg.sender);
-        }
     }
 
-    function setBountyHook(address hook) external onlyOwner {
-        address prev = bountyHook;
-        bountyHook = hook;
-        emit BountyHookUpdated(prev, hook);
-    }
-
+    /// @notice Get the most recent attacks
+    /// @param count Number of recent attacks to return
     function getRecentAttacks(uint256 count) external view returns (Attack[] memory) {
         uint256 len = attacks.length;
         if (count > len) count = len;
@@ -95,32 +68,15 @@ contract ThreatRegistry {
         return recent;
     }
 
-    /// @notice Paginate attacks from a starting index (for pollers)
-    function getAttacksSince(uint256 fromIndex) external view returns (Attack[] memory) {
-        uint256 len = attacks.length;
-        if (fromIndex >= len) {
-            return new Attack[](0);
-        }
-        uint256 n = len - fromIndex;
-        Attack[] memory out = new Attack[](n);
-        for (uint256 i = 0; i < n; i++) {
-            out[i] = attacks[fromIndex + i];
-        }
-        return out;
-    }
-
+    /// @notice Get reporter reputation stats
     function getReporterStats(address reporter) external view returns (
         uint256, uint256, uint256
     ) {
         return (reportCount[reporter], firstReport[reporter], lastReport[reporter]);
     }
 
+    /// @notice Total number of attacks in the registry
     function totalAttacks() external view returns (uint256) {
         return attacks.length;
-    }
-
-    /// @notice Compatibility with SENTINEL `ThreatRegistry.isThreat`
-    function isThreat(bytes32 signatureHash) external view returns (bool) {
-        return knownPattern[signatureHash];
     }
 }

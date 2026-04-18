@@ -2,7 +2,7 @@
 import time
 
 import pytest
-from detector.on_chain.state_machine import DetectionStateMachine
+from detection_engine.state_machine import DetectionStateMachine
 
 
 def test_idle_to_flash_loan_observed():

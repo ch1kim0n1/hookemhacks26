@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from detector.on_chain.operator import DEFAULT_ROSTER, Operator
+from detection_engine.operator import DEFAULT_ROSTER, Operator
 
 
 ATTACKER = "0x0116686e2291dbd5e317f47fadbfb43b599786ef"

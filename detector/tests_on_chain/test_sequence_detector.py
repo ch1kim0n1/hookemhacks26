@@ -1,6 +1,6 @@
 """Tests for MLP sequence detector."""
 import pytest
-from detector.on_chain.sequence_detector import SequenceDetector
+from detection_engine.sequence_detector import SequenceDetector
 
 
 def test_predict_returns_zero_before_training():

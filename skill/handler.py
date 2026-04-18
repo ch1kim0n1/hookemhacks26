@@ -4,10 +4,10 @@ import hashlib
 import json
 import time
 
-from extractor import extract_all
-from detector.verdict import detect
-from blockchain.client import ChainClient
-from store import sqlite as db
+from .extractors import extract_all
+from .detectors import detect
+from .chain import ChainClient
+from . import db
 
 
 class ContentBlocked(Exception):

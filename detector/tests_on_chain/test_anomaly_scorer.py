@@ -1,6 +1,6 @@
 """Tests for IsolationForest anomaly scorer."""
 import pytest
-from detector.on_chain.anomaly_scorer import AnomalyScorer
+from detection_engine.anomaly_scorer import AnomalyScorer
 
 
 def test_scorer_returns_zero_before_warmup():

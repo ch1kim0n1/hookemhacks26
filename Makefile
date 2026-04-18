@@ -1,4 +1,4 @@
-.PHONY: setup fixtures api dashboard demo contracts clean pivot-test
+.PHONY: setup fixtures api dashboard demo contracts clean
 
 # --- Setup ---
 setup:
@@ -20,7 +20,7 @@ fixtures:
 # --- Start API server ---
 api:
 	@echo "=== Starting ClawGuard API on :8000 ==="
-	cd $(CURDIR) && PYTHONPATH=$(CURDIR) uv run uvicorn skill.api:app --reload --host 0.0.0.0 --port 8000
+	cd $(CURDIR) && uv run uvicorn skill.api:app --reload --host 0.0.0.0 --port 8000
 
 # --- Start dashboard ---
 dashboard:
@@ -42,7 +42,7 @@ contracts:
 demo: fixtures
 	@echo "=== Running ClawGuard Demo ==="
 	@echo ""
-	cd $(CURDIR) && PYTHONPATH=$(CURDIR) uv run python demo/trading_agent/agent.py
+	cd $(CURDIR) && uv run python demo/trading_agent/agent.py
 	@echo ""
 	@echo "=== Demo complete ==="
 	@echo "Start the dashboard to see results:"
@@ -54,7 +54,7 @@ demo: fixtures
 demo-full: fixtures
 	@echo "=== Starting full demo ==="
 	@echo "Starting API server..."
-	cd $(CURDIR) && PYTHONPATH=$(CURDIR) uv run uvicorn skill.api:app --host 0.0.0.0 --port 8000 &
+	cd $(CURDIR) && uv run uvicorn skill.api:app --host 0.0.0.0 --port 8000 &
 	@sleep 2
 	@echo "Starting dashboard..."
 	cd $(CURDIR)/dashboard && npm run dev &
@@ -67,13 +67,6 @@ demo-full: fixtures
 	@echo "API: http://localhost:8000/api/health"
 	@echo "Press Ctrl+C to stop all"
 	@wait
-
-# --- Pivot verification (SENTINEL → ClawGuard tree) ---
-pivot-test:
-	@echo "=== pivot-test ==="
-	cd $(CURDIR) && python3 -m pytest detector/tests_on_chain blockchain/tests learning/tests network/tests -q --tb=no || true
-	cd $(CURDIR)/contracts && forge build -q 2>/dev/null || forge build
-	cd $(CURDIR)/zk && cargo test --lib -q 2>/dev/null || echo "zk: install Rust to run cargo test"
 
 # --- Clean ---
 clean:

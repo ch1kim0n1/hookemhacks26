@@ -13,7 +13,7 @@ try:
 except ImportError:
     HAS_WEB3 = False
 
-from store.sqlite import cache_threat, check_threat_cache, get_all_cached_threats
+from ..db import cache_threat, check_threat_cache, get_all_cached_threats
 
 # ABI for ThreatRegistry (formerly ClawGuardRegistry) — only the functions we call
 REGISTRY_ABI = json.loads("""[
