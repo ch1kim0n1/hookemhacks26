@@ -1,6 +1,6 @@
 [package]
-name = "sentinel-zk-host"
-version = "0.3.0-phase2"
+name = "clawguard-zk-host"
+version = "0.4.0-clawguard"
 edition = "2021"
 publish = false
 
@@ -8,16 +8,12 @@ publish = false
 path = "src/lib.rs"
 
 [[bin]]
-name = "prove_policy"
-path = "src/bin/prove_policy.rs"
+name = "prove_scan"
+path = "src/bin/prove_scan.rs"
 
 [[bin]]
-name = "prove_counterfactual"
-path = "src/bin/prove_counterfactual.rs"
-
-[[bin]]
-name = "prove_learning"
-path = "src/bin/prove_learning.rs"
+name = "prove_defense_update"
+path = "src/bin/prove_defense_update.rs"
 
 [[bin]]
 name = "dump_image_ids"
@@ -38,7 +34,6 @@ risc0-build = "=3.0.5"
 
 [package.metadata.risc0]
 methods = [
-    "../guest/policy-compliance",
-    "../guest/counterfactual-correctness",
-    "../guest/learning-correctness",
+    "../guest/scan-attestation",
+    "../guest/defense-update-correctness",
 ]

@@ -124,58 +124,7 @@ pub fn policy_journal(action_hash: &[u8; 32], policy_hash: &[u8; 32], event_id: 
 }
 
 // ---------------------------------------------------------------------------
-// CounterfactualCorrectness (structured claim)
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CounterfactualDelta {
-    /// Content-addressed identifier for the delta source; e.g.
-    /// `sha256(label_bytes)` for balance-based simulations or a raw
-    /// tx hash for execution-trace-based ones.
-    pub key: [u8; 32],
-    /// Signed balance delta in wei, big-endian two's-complement.
-    pub delta_wei_be: [u8; 32],
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CounterfactualInputs {
-    pub event_id: [u8; 32],
-    pub victim_protocol: [u8; 20],
-    pub deltas: Vec<CounterfactualDelta>,
-    pub claimed_delta_wei_be: [u8; 32],
-    /// Block hash of the fork that produced Timeline B.
-    /// Non-zero value binds this proof to a specific historical block,
-    /// grounding the counterfactual simulation in provable on-chain state
-    /// (Approach A / Hybrid per doc 04 §CounterfactualCorrectness).
-    /// Deserialises as all-zeros when absent so existing callers still work.
-    #[serde(default)]
-    pub fork_block_hash: [u8; 32],
-}
-
-/// Journal layout (160 bytes):
-///   eventId || counterfactualRoot || deltaWei || victimProtocol (left-padded)
-///   || forkBlockHash
-pub const COUNTERFACTUAL_JOURNAL_LEN: usize = 160;
-
-pub fn counterfactual_journal(
-    event_id: &[u8; 32],
-    counterfactual_root: &[u8; 32],
-    delta_wei_be: &[u8; 32],
-    victim_protocol: &[u8; 20],
-    fork_block_hash: &[u8; 32],
-) -> [u8; COUNTERFACTUAL_JOURNAL_LEN] {
-    let mut out = [0u8; COUNTERFACTUAL_JOURNAL_LEN];
-    out[0..32].copy_from_slice(event_id);
-    out[32..64].copy_from_slice(counterfactual_root);
-    out[64..96].copy_from_slice(delta_wei_be);
-    // Left-pad 20-byte address into a 32-byte slot.
-    out[96 + 12..96 + 32].copy_from_slice(victim_protocol);
-    out[128..160].copy_from_slice(fork_block_hash);
-    out
-}
-
-// ---------------------------------------------------------------------------
-// LearningLoopCorrectness
+// DefenseUpdateCorrectness (renamed from LearningLoopCorrectness)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,57 +202,7 @@ mod tests {
         assert!(c[..64].iter().all(|&x| x == 0));
     }
 
-    // ---------------- CounterfactualCorrectness ----------------
-
-    #[test]
-    fn counterfactual_journal_layout_matches_abi() {
-        let event_id = [0x01u8; 32];
-        let root = [0x02u8; 32];
-        let delta = [0x03u8; 32];
-        let victim = [0x04u8; 20];
-        let fork = [0x05u8; 32];
-
-        let j = counterfactual_journal(&event_id, &root, &delta, &victim, &fork);
-
-        assert_eq!(j.len(), COUNTERFACTUAL_JOURNAL_LEN);
-        assert_eq!(&j[0..32], &event_id);
-        assert_eq!(&j[32..64], &root);
-        assert_eq!(&j[64..96], &delta);
-        // Address left-padded into 32-byte slot: bytes 96..108 = 0, 108..128 = address.
-        assert!(j[96..108].iter().all(|&x| x == 0), "address padding");
-        assert_eq!(&j[108..128], &victim);
-        assert_eq!(&j[128..160], &fork);
-    }
-
-    #[test]
-    fn counterfactual_zero_fork_hash_ok() {
-        // Approach A allows zero fork_block_hash for back-compat.
-        let j = counterfactual_journal(&[0u8; 32], &[0u8; 32], &[0u8; 32], &[0u8; 20], &[0u8; 32]);
-        assert!(j.iter().all(|&b| b == 0));
-    }
-
-    #[test]
-    fn counterfactual_address_padding_never_collides() {
-        // Two addresses differing in only the last byte must produce
-        // journals differing in exactly that slot.
-        let mut a = [0u8; 20];
-        let mut b = [0u8; 20];
-        a[19] = 0x42;
-        b[19] = 0x43;
-        let ja = counterfactual_journal(&[0u8; 32], &[0u8; 32], &[0u8; 32], &a, &[0u8; 32]);
-        let jb = counterfactual_journal(&[0u8; 32], &[0u8; 32], &[0u8; 32], &b, &[0u8; 32]);
-
-        // Identical except one byte at offset 127.
-        for i in 0..160 {
-            if i == 127 {
-                assert_ne!(ja[i], jb[i]);
-            } else {
-                assert_eq!(ja[i], jb[i], "byte {} should match", i);
-            }
-        }
-    }
-
-    // ---------------- LearningLoopCorrectness ----------------
+    // ---------------- DefenseUpdateCorrectness ----------------
 
     #[test]
     fn learning_journal_layout_matches_abi() {
@@ -478,18 +377,4 @@ mod tests {
         assert!(e.features.is_empty());
     }
 
-    #[test]
-    fn counterfactual_inputs_default_fork_block_hash() {
-        // Explicit: when fork_block_hash is missing in JSON, it deserialises
-        // to all-zeros. Required for back-compat with pre-Hybrid-A callers.
-        let json = r#"{
-            "event_id": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            "victim_protocol": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            "deltas": [],
-            "claimed_delta_wei_be": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        }"#;
-        let parsed: CounterfactualInputs =
-            serde_json::from_str(json).expect("should parse without fork_block_hash");
-        assert_eq!(parsed.fork_block_hash, [0u8; 32]);
-    }
 }

@@ -64,6 +64,11 @@ contracts/lib/
 contracts/broadcast/
 forge-cache/
 
+# ---------- Rust ----------
+target/
+**/target/
+Cargo.lock.bak
+
 # ---------- Data / Databases ----------
 *.db
 *.sqlite

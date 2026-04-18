@@ -1,16 +1,14 @@
 //! Host-side smoke tests (no full prove — CI installs rzup for guest embed).
 
-use sentinel_zk_host::{
-    counterfactual_correctness_image_id, image_id_to_bytes32, learning_correctness_image_id,
-    policy_compliance_image_id,
+use clawguard_zk_host::{
+    defense_update_correctness_image_id, image_id_to_bytes32, scan_attestation_image_id,
 };
 
 #[test]
 fn all_image_ids_are_nonzero() {
     for (name, id) in [
-        ("policy-compliance", policy_compliance_image_id()),
-        ("counterfactual-correctness", counterfactual_correctness_image_id()),
-        ("learning-correctness", learning_correctness_image_id()),
+        ("scan-attestation", scan_attestation_image_id()),
+        ("defense-update-correctness", defense_update_correctness_image_id()),
     ] {
         assert!(id.iter().any(|&w| w != 0), "{name} image id should be non-zero");
     }
@@ -18,12 +16,9 @@ fn all_image_ids_are_nonzero() {
 
 #[test]
 fn image_ids_are_distinct() {
-    let a = policy_compliance_image_id();
-    let b = counterfactual_correctness_image_id();
-    let c = learning_correctness_image_id();
-    assert_ne!(a, b, "policy != counterfactual");
-    assert_ne!(b, c, "counterfactual != learning");
-    assert_ne!(a, c, "policy != learning");
+    let a = scan_attestation_image_id();
+    let b = defense_update_correctness_image_id();
+    assert_ne!(a, b, "scan-attestation != defense-update-correctness");
 }
 
 #[test]

@@ -1,8 +1,7 @@
 [workspace]
 members = [
-    "guest/policy-compliance",
-    "guest/counterfactual-correctness",
-    "guest/learning-correctness",
+    "guest/scan-attestation",
+    "guest/defense-update-correctness",
     "host",
     "shared",
 ]

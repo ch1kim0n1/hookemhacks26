@@ -1,4 +1,4 @@
-//! Host-side wrappers for the sentinel zkVM circuits.
+//! Host-side wrappers for the ClawGuard zkVM circuits.
 //!
 //! Each `prove_*` function runs the corresponding guest under
 //! `ProverOpts::groth16()` and returns a `ProofArtifacts`:
@@ -20,8 +20,7 @@ use anyhow::{Context, Result};
 use risc0_ethereum_contracts::encode_seal;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use sentinel_zk_shared::{
-    CounterfactualInputs, GuestInputs, LearningInputs, COUNTERFACTUAL_JOURNAL_LEN,
-    LEARNING_JOURNAL_LEN, POLICY_JOURNAL_LEN,
+    GuestInputs, LearningInputs, LEARNING_JOURNAL_LEN, POLICY_JOURNAL_LEN,
 };
 
 include!(concat!(env!("OUT_DIR"), "/methods.rs"));
@@ -86,36 +85,25 @@ fn prove<T: serde::Serialize>(
     })
 }
 
-pub fn prove_policy(inputs: &GuestInputs) -> Result<ProofArtifacts> {
-    prove(inputs, POLICY_COMPLIANCE_ELF, POLICY_COMPLIANCE_ID, POLICY_JOURNAL_LEN)
+pub fn prove_scan(inputs: &GuestInputs) -> Result<ProofArtifacts> {
+    prove(inputs, SCAN_ATTESTATION_ELF, SCAN_ATTESTATION_ID, POLICY_JOURNAL_LEN)
 }
 
-pub fn prove_counterfactual(inputs: &CounterfactualInputs) -> Result<ProofArtifacts> {
+pub fn prove_defense_update(inputs: &LearningInputs) -> Result<ProofArtifacts> {
     prove(
         inputs,
-        COUNTERFACTUAL_CORRECTNESS_ELF,
-        COUNTERFACTUAL_CORRECTNESS_ID,
-        COUNTERFACTUAL_JOURNAL_LEN,
-    )
-}
-
-pub fn prove_learning(inputs: &LearningInputs) -> Result<ProofArtifacts> {
-    prove(
-        inputs,
-        LEARNING_CORRECTNESS_ELF,
-        LEARNING_CORRECTNESS_ID,
+        DEFENSE_UPDATE_CORRECTNESS_ELF,
+        DEFENSE_UPDATE_CORRECTNESS_ID,
         LEARNING_JOURNAL_LEN,
     )
 }
 
-pub fn policy_compliance_image_id() -> [u32; 8] {
-    POLICY_COMPLIANCE_ID
+pub fn scan_attestation_image_id() -> [u32; 8] {
+    SCAN_ATTESTATION_ID
 }
-pub fn counterfactual_correctness_image_id() -> [u32; 8] {
-    COUNTERFACTUAL_CORRECTNESS_ID
-}
-pub fn learning_correctness_image_id() -> [u32; 8] {
-    LEARNING_CORRECTNESS_ID
+
+pub fn defense_update_correctness_image_id() -> [u32; 8] {
+    DEFENSE_UPDATE_CORRECTNESS_ID
 }
 
 /// Convert an image ID to `bytes32`. The 8 `u32` limbs are little-endian,

@@ -1,16 +1,15 @@
 [package]
-name = "policy-compliance"
-version = "0.2.0-phase2"
+name = "defense-update-correctness"
+version = "0.3.0-clawguard"
 edition = "2021"
 publish = false
 
 [[bin]]
-name = "policy-compliance"
+name = "defense-update-correctness"
 path = "src/main.rs"
 
 [dependencies]
 risc0-zkvm = { workspace = true, features = ["std"] }
 serde = { workspace = true }
-serde_json = { workspace = true }
 sha2 = { workspace = true, features = ["std"] }
 sentinel-zk-shared = { path = "../../shared" }

@@ -1,14 +1,15 @@
-//! CLI host for the LearningLoopCorrectness circuit.
+//! CLI host for the DefenseUpdateCorrectness circuit
+//! (renamed from LearningLoopCorrectness).
 //!
-//! Usage:   echo '<LearningInputs JSON>' | prove_learning
+//! Usage:   echo '<LearningInputs JSON>' | prove_defense_update
 //! Output:  { "proof": "0x...", "publicInputs": ["0x..."; 4],
 //!            "imageId": "0x...", "elapsedMs": N,
-//!            "circuit": "learning-correctness" }
+//!            "circuit": "defense-update-correctness" }
 //!
 //! publicInputs order: [oldPolicyHash, newPolicyHash, winRateBp, generationCount].
 
 use anyhow::{Context, Result};
-use sentinel_zk_host::prove_learning;
+use clawguard_zk_host::prove_defense_update;
 use sentinel_zk_shared::LearningInputs;
 use std::io::Read;
 
@@ -21,14 +22,14 @@ fn main() -> Result<()> {
         serde_json::from_str(&raw).context("parse LearningInputs JSON")?;
 
     eprintln!(
-        "[prove_learning] starting proof over {} generations",
+        "[prove_defense_update] starting proof over {} generations",
         inputs.generations.len()
     );
 
-    let artifacts = prove_learning(&inputs)?;
+    let artifacts = prove_defense_update(&inputs)?;
 
     eprintln!(
-        "[prove_learning] proof generated in {:.2?}",
+        "[prove_defense_update] proof generated in {:.2?}",
         artifacts.elapsed
     );
 
@@ -44,7 +45,7 @@ fn main() -> Result<()> {
         "imageId": format!("0x{}", hex::encode(artifacts.image_id)),
         "journal": format!("0x{}", hex::encode(&artifacts.journal_bytes)),
         "elapsedMs": artifacts.elapsed.as_millis(),
-        "circuit": "learning-correctness",
+        "circuit": "defense-update-correctness",
     });
 
     println!("{}", serde_json::to_string(&output)?);

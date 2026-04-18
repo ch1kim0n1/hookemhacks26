@@ -1273,6 +1273,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "clawguard-zk-host"
+version = "0.4.0-clawguard"
+dependencies = [
+ "anyhow",
+ "hex",
+ "risc0-build",
+ "risc0-ethereum-contracts",
+ "risc0-zkvm",
+ "sentinel-zk-shared",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "cobs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1353,16 +1368,6 @@ dependencies = [
  "bitflags 1.3.2",
  "core-foundation",
  "libc",
-]
-
-[[package]]
-name = "counterfactual-correctness"
-version = "0.2.0-phase2"
-dependencies = [
- "risc0-zkvm",
- "sentinel-zk-shared",
- "serde",
- "sha2",
 ]
 
 [[package]]
@@ -1505,6 +1510,16 @@ dependencies = [
  "lock_api",
  "once_cell",
  "parking_lot_core",
+]
+
+[[package]]
+name = "defense-update-correctness"
+version = "0.3.0-clawguard"
+dependencies = [
+ "risc0-zkvm",
+ "sentinel-zk-shared",
+ "serde",
+ "sha2",
 ]
 
 [[package]]
@@ -2453,16 +2468,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "learning-correctness"
-version = "0.2.0-phase2"
-dependencies = [
- "risc0-zkvm",
- "sentinel-zk-shared",
- "serde",
- "sha2",
-]
-
-[[package]]
 name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2845,17 +2850,6 @@ checksum = "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
 dependencies = [
  "der",
  "spki",
-]
-
-[[package]]
-name = "policy-compliance"
-version = "0.2.0-phase2"
-dependencies = [
- "risc0-zkvm",
- "sentinel-zk-shared",
- "serde",
- "serde_json",
- "sha2",
 ]
 
 [[package]]
@@ -3573,6 +3567,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "scan-attestation"
+version = "0.3.0-clawguard"
+dependencies = [
+ "risc0-zkvm",
+ "sentinel-zk-shared",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "schemars"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3664,21 +3669,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9900206b54a3527fdc7b8a938bffd94a568bac4f4aa8113b209df75a09c0dec2"
 dependencies = [
  "pest",
-]
-
-[[package]]
-name = "sentinel-zk-host"
-version = "0.3.0-phase2"
-dependencies = [
- "anyhow",
- "hex",
- "risc0-build",
- "risc0-ethereum-contracts",
- "risc0-zkvm",
- "sentinel-zk-shared",
- "serde",
- "serde_json",
- "sha2",
 ]
 
 [[package]]

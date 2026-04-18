@@ -1,4 +1,4 @@
-//! Writes the three circuit image IDs (as 0x-prefixed bytes32 hex) to a
+//! Writes the two circuit image IDs (as 0x-prefixed bytes32 hex) to a
 //! JSON file the Solidity deploy script reads. Image IDs are baked into
 //! the guest ELFs at Rust build time and cannot be recomputed on-chain,
 //! so we hand them across the language boundary via this artifact.
@@ -7,9 +7,8 @@
 //! Override with: `dump_image_ids <path>`
 
 use anyhow::{Context, Result};
-use sentinel_zk_host::{
-    counterfactual_correctness_image_id, image_id_to_bytes32, learning_correctness_image_id,
-    policy_compliance_image_id,
+use clawguard_zk_host::{
+    defense_update_correctness_image_id, image_id_to_bytes32, scan_attestation_image_id,
 };
 use std::path::PathBuf;
 
@@ -18,20 +17,18 @@ fn main() -> Result<()> {
         PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../config/zk-image-ids.json"))
     });
 
-    let policy = format!("0x{}", hex::encode(image_id_to_bytes32(policy_compliance_image_id())));
-    let counterfactual = format!(
+    let scan = format!(
         "0x{}",
-        hex::encode(image_id_to_bytes32(counterfactual_correctness_image_id()))
+        hex::encode(image_id_to_bytes32(scan_attestation_image_id()))
     );
-    let learning = format!(
+    let defense_update = format!(
         "0x{}",
-        hex::encode(image_id_to_bytes32(learning_correctness_image_id()))
+        hex::encode(image_id_to_bytes32(defense_update_correctness_image_id()))
     );
 
     let obj = serde_json::json!({
-        "PolicyCompliance": policy,
-        "CounterfactualCorrectness": counterfactual,
-        "LearningLoopCorrectness": learning,
+        "ScanAttestation": scan,
+        "DefenseUpdateCorrectness": defense_update,
     });
 
     if let Some(parent) = out_path.parent() {
