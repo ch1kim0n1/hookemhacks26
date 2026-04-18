@@ -28,6 +28,12 @@ forge verify-contract <ADDRESS> ClawGuardRegistry \
   --etherscan-api-key "$BASESCAN_API_KEY"
 ```
 
+## DefenseProtocol (`src/DefenseProtocol.sol`)
+
+Defense policy and **defense updates** (`publishDefenseUpdate` / `updatePolicy`) with ZK verifier hooks. Deploy with two verifier addresses (policy + learning); record `DEFENSE_PROTOCOL_ADDRESS` in `.env` when wired to the app.
+
+Quorum / federation validation is composed via **ConsensusVoting** (`FederationVerifier` in `ConsensusVoting.sol`); see `contracts/test/` for bundle acceptance tests in later phases.
+
 ## x402 bounty integration
 
 HTTP 402 “payment required” flows are **not** wired on-chain in this registry. Bounty or micropayment hooks belong in the API / coordinator layer; track separately from contract deployment.
