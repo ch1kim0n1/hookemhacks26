@@ -44,7 +44,7 @@ sentinel = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["detector/tests_on_chain", "blockchain/tests", "learning/tests"]
+testpaths = ["detector/tests_on_chain", "blockchain/tests", "learning/tests", "network/tests"]
 asyncio_mode = "auto"
 
 # [build-system] removed to prevent Vercel from trying to build the package

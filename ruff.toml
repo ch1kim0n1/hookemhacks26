@@ -1,0 +1,33 @@
+target-version = "py311"
+line-length = 100
+
+extend-exclude = [
+    ".venv",
+    "zk/target",
+    "contracts/out",
+    "contracts/cache",
+    "contracts/lib",
+    "dashboard/node_modules",
+]
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line-too-long handled by formatter
+    "B008",  # function call in defaults (FastAPI Depends, etc.)
+]
+
+[lint.per-file-ignores]
+"**/tests/**" = ["B011"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

@@ -1,12 +1,88 @@
-# ClawGuard — local infra (Redis + Anvil). Run Python services on host: `make api`
+# ClawGuard — local topology. Six services: anvil (chain), redis
+# (stream bus), plus four Python workers. Each worker mounts the repo
+# and shares the same Dockerfile, differing only in CMD.
+#
+# Usage:
+#   docker compose up anvil redis                # infra only
+#   docker compose up                             # full topology
+#   make api                                      # host-mode fallback
+
 services:
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
 
   anvil:
     image: ghcr.io/foundry-rs/foundry:latest
     entrypoint: ["anvil", "--host", "0.0.0.0", "--port", "8545"]
     ports:
       - "8545:8545"
+    healthcheck:
+      test: ["CMD-SHELL", "cast block-number --rpc-url http://localhost:8545 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+
+  clawguard-api:
+    build: .
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080"]
+    environment:
+      - RPC_URL=http://anvil:8545
+      - REDIS_URL=redis://redis:6379/0
+      - ADDRESSES_FILE=/app/config/addresses.local.json
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+
+  clawguard-monitor:
+    build: .
+    command: ["python", "-m", "blockchain.mempool"]
+    environment:
+      - RPC_URL=http://anvil:8545
+      - REDIS_URL=redis://redis:6379/0
+      - ADDRESSES_FILE=/app/config/addresses.local.json
+    depends_on:
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+
+  clawguard-learning:
+    build: .
+    command: ["python", "-m", "learning.orchestrator"]
+    environment:
+      - RPC_URL=http://anvil:8545
+      - REDIS_URL=redis://redis:6379/0
+      - ADDRESSES_FILE=/app/config/addresses.local.json
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+
+  clawguard-zk-prover:
+    build: .
+    command: ["python", "-m", "blockchain.prover_client"]
+    environment:
+      - RPC_URL=http://anvil:8545
+      - REDIS_URL=redis://redis:6379/0
+      - CLAWGUARD_ZK_CACHE=/app/.clawguard_zk_cache.db
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./:/app
