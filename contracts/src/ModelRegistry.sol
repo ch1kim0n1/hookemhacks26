@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-/// @title ModelRegistry — minimal operator model hash registry for FederationVerifier
+/// @title ModelRegistry — minimal operator model hash registry for ConsensusVoting
 /// @notice Stubs operator → modelHash for consensus attestation checks.
 contract ModelRegistry {
     mapping(address => bytes32) private _modelHash;
@@ -13,7 +13,7 @@ contract ModelRegistry {
         emit ModelRegistered(msg.sender, modelHash);
     }
 
-    /// @dev Shape matches FederationVerifier: (currentHash, a, b, c)
+    /// @dev Shape matches ConsensusVoting expectations: (currentHash, a, b, c)
     function modelOf(address operator)
         external
         view

@@ -3,9 +3,9 @@ pragma solidity 0.8.24;
 
 import {ModelRegistry} from "./ModelRegistry.sol";
 
-/// @title FederationVerifier
-/// @notice Validates K-of-N consensus bundles submitted by the
-///         federation-coordinator. A bundle is accepted iff:
+/// @title ConsensusVoting
+/// @notice Validates K-of-N consensus bundles (federated defense attestations).
+///         A bundle is accepted iff:
 ///           1. every attestation's `modelHash` is currently registered
 ///              in `ModelRegistry`, and
 ///           2. at least `thresholdK` distinct operator addresses are
@@ -13,9 +13,9 @@ import {ModelRegistry} from "./ModelRegistry.sol";
 ///           3. the supplied consensus confidence clears the minimum.
 ///
 ///         The accepted bundle is recorded by `(eventId, attackerAddress)`
-///         so downstream contracts (SentinelGuard, ThreatRegistry, etc.)
+///         so downstream contracts (SentinelGuard, ClawGuardRegistry, etc.)
 ///         can gate their actions on `isAccepted(eventId)`.
-contract FederationVerifier {
+contract ConsensusVoting {
     struct Attestation {
         address operator;
         bytes32 modelHash;
@@ -44,6 +44,9 @@ contract FederationVerifier {
 
     mapping(bytes32 => AcceptedBundle) public accepted;
 
+    /// @notice Operators removed from the quorum (malicious or equivocating).
+    mapping(address => bool) public slashed;
+
     event ThresholdsUpdated(uint8 k, uint8 n, uint16 minConfidence);
     event AdminChanged(address indexed previous, address indexed current);
     event BundleAccepted(
@@ -53,9 +56,10 @@ contract FederationVerifier {
         uint8 attestationCount
     );
     event BundleRejected(bytes32 indexed eventId, string reason);
+    event OperatorSlashed(address indexed operator, address indexed caller);
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "FederationVerifier: not admin");
+        require(msg.sender == admin, "ConsensusVoting: not admin");
         _;
     }
 
@@ -66,10 +70,10 @@ contract FederationVerifier {
         uint8 _n,
         uint16 _minConfidence
     ) {
-        require(_registry != address(0), "FederationVerifier: zero registry");
-        require(_admin != address(0), "FederationVerifier: zero admin");
-        require(_k > 0 && _k <= _n, "FederationVerifier: bad thresholds");
-        require(_minConfidence <= 10000, "FederationVerifier: bad confidence");
+        require(_registry != address(0), "ConsensusVoting: zero registry");
+        require(_admin != address(0), "ConsensusVoting: zero admin");
+        require(_k > 0 && _k <= _n, "ConsensusVoting: bad thresholds");
+        require(_minConfidence <= 10000, "ConsensusVoting: bad confidence");
         registry = ModelRegistry(_registry);
         admin = _admin;
         thresholdK = _k;
@@ -80,18 +84,26 @@ contract FederationVerifier {
     }
 
     function setAdmin(address next) external onlyAdmin {
-        require(next != address(0), "FederationVerifier: zero admin");
+        require(next != address(0), "ConsensusVoting: zero admin");
         emit AdminChanged(admin, next);
         admin = next;
     }
 
     function setThresholds(uint8 _k, uint8 _n, uint16 _minConfidence) external onlyAdmin {
-        require(_k > 0 && _k <= _n, "FederationVerifier: bad thresholds");
-        require(_minConfidence <= 10000, "FederationVerifier: bad confidence");
+        require(_k > 0 && _k <= _n, "ConsensusVoting: bad thresholds");
+        require(_minConfidence <= 10000, "ConsensusVoting: bad confidence");
         thresholdK = _k;
         thresholdN = _n;
         minConfidence = _minConfidence;
         emit ThresholdsUpdated(_k, _n, _minConfidence);
+    }
+
+    /// @notice Remove an operator from future quorums (malicious / Byzantine behavior).
+    function slash(address operator) external onlyAdmin {
+        require(operator != address(0), "ConsensusVoting: zero operator");
+        require(!slashed[operator], "ConsensusVoting: already slashed");
+        slashed[operator] = true;
+        emit OperatorSlashed(operator, msg.sender);
     }
 
     /// @notice Submit a federated consensus bundle. Reverts with a clear
@@ -99,8 +111,8 @@ contract FederationVerifier {
     ///         and returns `false` for policy-level rejections (so a
     ///         calling contract can observe both outcomes).
     function submitBundle(ConsensusBundle calldata bundle) external returns (bool) {
-        require(bundle.eventId != bytes32(0), "FederationVerifier: zero eventId");
-        require(accepted[bundle.eventId].acceptedAt == 0, "FederationVerifier: duplicate");
+        require(bundle.eventId != bytes32(0), "ConsensusVoting: zero eventId");
+        require(accepted[bundle.eventId].acceptedAt == 0, "ConsensusVoting: duplicate");
 
         uint256 n = bundle.attestations.length;
         if (n < thresholdK) {
@@ -121,6 +133,10 @@ contract FederationVerifier {
             Attestation calldata att = bundle.attestations[i];
             if (att.confidence > 10000) {
                 emit BundleRejected(bundle.eventId, "attestation conf OOB");
+                return false;
+            }
+            if (slashed[att.operator]) {
+                emit BundleRejected(bundle.eventId, "slashed operator");
                 return false;
             }
 

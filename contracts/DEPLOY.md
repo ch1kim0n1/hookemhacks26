@@ -32,7 +32,7 @@ forge verify-contract <ADDRESS> ClawGuardRegistry \
 
 Defense policy and **defense updates** (`publishDefenseUpdate` / `updatePolicy`) with ZK verifier hooks. Deploy with two verifier addresses (policy + learning); record `DEFENSE_PROTOCOL_ADDRESS` in `.env` when wired to the app.
 
-Quorum / federation validation is composed via **ConsensusVoting** (`FederationVerifier` in `ConsensusVoting.sol`); see `contracts/test/` for bundle acceptance tests in later phases.
+Quorum validation is implemented by **`ConsensusVoting`** (`src/ConsensusVoting.sol`): configurable **K-of-N** thresholds, **`slash`** for malicious operators, and `submitBundle` / `isAccepted`. See `contracts/test/ConsensusVoting.t.sol`.
 
 ## x402 bounty integration
 
