@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.24;
 
 /// @title ClawGuardRegistry — on-chain threat intelligence sharing for AI agents
-/// @notice Stores hashed attack patterns so agents across instances can share threat intel
+/// @notice Supersedes the legacy ThreatRegistry design from SENTINEL v2. Stores hashed
+///         attack patterns so agents across instances can share threat intel.
 contract ClawGuardRegistry {
     struct Attack {
         bytes32 patternHash;
@@ -14,6 +15,9 @@ contract ClawGuardRegistry {
     }
 
     Attack[] public attacks;
+
+    /// @notice Whether this exact pattern hash has ever been published (O(1) lookup).
+    mapping(bytes32 => bool) public isKnownAttack;
 
     // Reporter reputation tracking
     mapping(address => uint256) public reportCount;
@@ -45,6 +49,8 @@ contract ClawGuardRegistry {
             blockNumber: block.number
         }));
 
+        isKnownAttack[patternHash] = true;
+
         // Update reporter stats
         if (firstReport[msg.sender] == 0) {
             firstReport[msg.sender] = block.timestamp;
@@ -66,6 +72,24 @@ contract ClawGuardRegistry {
             recent[i] = attacks[len - count + i];
         }
         return recent;
+    }
+
+    /// @notice Paginate attacks from a logical index (0 = first attack ever recorded).
+    /// @dev Compatible with legacy getAttacksSince(fromIndex) pagination from ThreatRegistry specs.
+    function getAttacksSince(uint256 fromIndex) external view returns (Attack[] memory) {
+        uint256 len = attacks.length;
+        require(fromIndex <= len, "ClawGuardRegistry: fromIndex OOB");
+        uint256 n = len - fromIndex;
+        Attack[] memory out = new Attack[](n);
+        for (uint256 i = 0; i < n; i++) {
+            out[i] = attacks[fromIndex + i];
+        }
+        return out;
+    }
+
+    /// @notice SentinelGuard compatibility: treat pattern hash as a known threat signature.
+    function isThreat(bytes32 patternHash) external view returns (bool) {
+        return isKnownAttack[patternHash];
     }
 
     /// @notice Get reporter reputation stats

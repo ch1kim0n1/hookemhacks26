@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import {PauseController} from "./PauseController.sol";
-import {ThreatRegistry} from "./ThreatRegistry.sol";
+import {ClawGuardRegistry} from "./ClawGuardRegistry.sol";
 
 /// @title SentinelGuard
 /// @notice Read-only integration surface. Protected protocols call
@@ -11,7 +11,7 @@ import {ThreatRegistry} from "./ThreatRegistry.sol";
 ///         blocking the underlying function.
 contract SentinelGuard {
     PauseController public immutable pauseController;
-    ThreatRegistry public threatRegistry;
+    ClawGuardRegistry public threatRegistry;
     address public owner;
 
     constructor(address _pauseController) {
@@ -22,7 +22,7 @@ contract SentinelGuard {
 
     function setThreatRegistry(address _registry) external {
         require(msg.sender == owner, "SentinelGuard: not owner");
-        threatRegistry = ThreatRegistry(_registry);
+        threatRegistry = ClawGuardRegistry(_registry);
     }
 
     /// @notice Phase 2: allow unless the caller's contract has an active

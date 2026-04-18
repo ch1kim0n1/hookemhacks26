@@ -60,6 +60,40 @@ REGISTRY_ABI = json.loads("""[
         "type": "function"
     },
     {
+        "inputs": [{"name": "fromIndex", "type": "uint256"}],
+        "name": "getAttacksSince",
+        "outputs": [
+            {
+                "components": [
+                    {"name": "patternHash", "type": "bytes32"},
+                    {"name": "category", "type": "string"},
+                    {"name": "sampleRedacted", "type": "string"},
+                    {"name": "reporter", "type": "address"},
+                    {"name": "timestamp", "type": "uint256"},
+                    {"name": "blockNumber", "type": "uint256"}
+                ],
+                "name": "",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "patternHash", "type": "bytes32"}],
+        "name": "isKnownAttack",
+        "outputs": [{"name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "patternHash", "type": "bytes32"}],
+        "name": "isThreat",
+        "outputs": [{"name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "anonymous": false,
         "inputs": [
             {"indexed": true, "name": "patternHash", "type": "bytes32"},
