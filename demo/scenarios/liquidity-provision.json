@@ -1,0 +1,17 @@
+{
+    "name": "Liquidity Provision",
+    "id": "liquidity-provision",
+    "category": "benign",
+    "severity": 0,
+    "summary": "LP deposits 50 WETH into VictimLendingPool. Detector observes the deposit path, verdict is noise, no defense triggered.",
+    "expectedOutcome": "PendingTxEvent published. OperatorVerdict level=noise. Pool TVL increases; frontend reflects new reserves.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/lp-deposit { amountWeth: string }"],
+    "steps": [
+        { "at": 0, "action": "banner", "text": "LP deposit — 50 WETH → VictimLendingPool" },
+        { "at": 200, "action": "trigger", "endpoint": "POST /api/v1/demo/lp-deposit" },
+        { "at": 1800, "action": "focus", "component": "EventFeed" },
+        { "at": 3500, "action": "banner", "text": "Pool TVL updated. Detector idle." },
+        { "at": 6000, "action": "focus", "component": "BattlefieldViz" }
+    ]
+}

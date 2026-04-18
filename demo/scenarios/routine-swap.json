@@ -1,0 +1,18 @@
+{
+    "name": "Routine Token Swap",
+    "id": "routine-swap",
+    "category": "benign",
+    "severity": 0,
+    "summary": "An EOA performs a normal 1 WETH swap on the protected AMM. Detector observes, assigns low anomaly, no action fires.",
+    "expectedOutcome": "OperatorVerdict emitted with level=noise. No ThreatConfirmedEvent. No PolicyCompliance proof. Chain state unchanged beyond the swap.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/swap { amountWeth: string, recipient?: address }"],
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Routine swap — 1 WETH → token" },
+        { "at": 200, "action": "trigger", "endpoint": "POST /api/v1/demo/swap" },
+        { "at": 1500, "action": "focus", "component": "EventFeed" },
+        { "at": 3000, "action": "banner", "text": "Detector: anomalyScore 0.04 — noise, no action" },
+        { "at": 5000, "action": "focus", "component": "TrustInterface" },
+        { "at": 7000, "action": "banner", "text": "Clean path. System quiet. This is the control case." }
+    ]
+}

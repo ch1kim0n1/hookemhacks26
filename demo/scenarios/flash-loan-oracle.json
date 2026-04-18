@@ -1,0 +1,14 @@
+{
+    "name": "Flash Loan Oracle Manipulation",
+    "id": "flash-loan-oracle",
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Flash loan origination — mempool observed" },
+        { "at": 200, "action": "trigger", "endpoint": "POST /api/v1/demo/replay-scenario" },
+        { "at": 2000, "action": "focus", "component": "TrustInterface" },
+        { "at": 3000, "action": "focus", "component": "DualTimelineViewer" },
+        { "at": 5000, "action": "banner", "text": "Counterfactual computed — delta committed to chain" },
+        { "at": 8000, "action": "focus", "component": "TimeScrollAudit" },
+        { "at": 10000, "action": "publishImmunity" },
+        { "at": 12000, "action": "focus", "component": "ImmunityMap" }
+    ]
+}

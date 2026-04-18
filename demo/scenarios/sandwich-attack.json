@@ -1,0 +1,18 @@
+{
+    "name": "Sandwich Attack (MEV)",
+    "id": "sandwich-attack",
+    "category": "attack",
+    "severity": 6,
+    "summary": "Attacker front-runs a pending user swap, then back-runs it. Detector observes the front/back pattern on the same block and flags MEV extraction.",
+    "expectedOutcome": "Three PendingTxEvents in order (front, victim, back). Detector emits MEV_SANDWICH verdict. Defense is advisory (alert only) — sandwiching is legal-but-hostile, so no on-chain pause.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/sandwich { victimAmountWeth: string }"],
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Innocent user queues swap. Attacker observes mempool." },
+        { "at": 400, "action": "trigger", "endpoint": "POST /api/v1/demo/sandwich" },
+        { "at": 2000, "action": "focus", "component": "EventFeed" },
+        { "at": 3500, "action": "banner", "text": "Front-run in, victim tx, back-run out — all same block" },
+        { "at": 5500, "action": "focus", "component": "AttackIntelGraph" },
+        { "at": 7000, "action": "banner", "text": "PreemptiveAlertEvent@1 — pattern MEV_SANDWICH. Advisory, no pause." }
+    ]
+}

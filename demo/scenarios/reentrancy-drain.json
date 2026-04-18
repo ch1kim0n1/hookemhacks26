@@ -1,0 +1,22 @@
+{
+    "name": "Reentrancy Drain",
+    "id": "reentrancy-drain",
+    "category": "attack",
+    "severity": 9,
+    "summary": "Classic DAO-style reentrancy: attacker contract re-enters VictimLendingPool.withdraw() before the balance is decremented. Detector catches the signature and pauses the pool.",
+    "expectedOutcome": "PendingTxEvent published. Detector matches REENTRANCY pattern (callGraphDepth > 3, recursive same-target). ThreatConfirmedEvent@2. defense-agent pauses before the second reentrant call drains.",
+    "runnable": false,
+    "requires": [
+        "POST /api/v1/demo/reentrancy { depth?: number }",
+        "Attacker contract: ReentrancyAttacker.sol (not yet deployed in DeployLocal)"
+    ],
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Attacker call: ReentrancyAttacker.exploit() — recursive withdraw" },
+        { "at": 300, "action": "trigger", "endpoint": "POST /api/v1/demo/reentrancy" },
+        { "at": 1800, "action": "focus", "component": "BattlefieldViz" },
+        { "at": 3200, "action": "banner", "text": "Detector: callGraphDepth=7, same target — REENTRANCY" },
+        { "at": 5000, "action": "focus", "component": "TrustInterface" },
+        { "at": 7000, "action": "banner", "text": "Pause landed after 1 reentrant call. Loss ≈ 0.3% vs. total pool." },
+        { "at": 9500, "action": "publishImmunity" }
+    ]
+}

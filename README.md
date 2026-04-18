@@ -59,7 +59,7 @@ make demo
 | `ANTHROPIC_API_KEY` | Yes | For LLM judge and vision model |
 | `BASE_SEPOLIA_RPC_URL` | No | Default: `https://sepolia.base.org` |
 | `CLAWGUARD_PRIVATE_KEY` | No | For publishing to on-chain registry |
-| `CLAWGUARD_REGISTRY_ADDRESS` | No | Deployed ClawGuardRegistry address |
+| `CLAWGUARD_REGISTRY_ADDRESS` | No | Deployed `ThreatRegistry` address (legacy env name) |
 | `ALPACA_API_KEY` | No | Alpaca paper trading (demo only) |
 | `ALPACA_SECRET_KEY` | No | Alpaca paper trading (demo only) |
 
@@ -115,42 +115,22 @@ Three attack fixtures in `demo/attacks/`:
 
 - **SQLite over Postgres**: Zero-config, single file, good enough for demo throughput.
 
-## Project Structure
+## Project Structure (SENTINEL stack merged)
+
+The former `SENTINEL/` backend is hoisted into this repo: `zk/`, `config/`, `schemas/`, `detector/on_chain/` (IsolationForest + LSTM), `blockchain/defense_agent/`, Redis bus under `store/`, and Foundry contracts (`ThreatRegistry`, `DefenseProtocol`, `ConsensusVoting`, etc.). See `absolute-docs/09_implementation_map.md`.
 
 ```
 clawguard/
-  skill/
-    SKILL.md              # OpenClaw skill manifest
-    handler.py            # Main intercept + scan_only entry points
-    api.py                # FastAPI server for dashboard
-    db.py                 # SQLite for logs + threat cache
-    extractors/
-      router.py           # Auto-detect modality, route to extractor
-      text.py             # HTML/email/plain text + zero-width detection
-      image.py            # Tesseract multipass OCR + vision model
-      pdf.py              # pdfplumber + pypdf hidden layers
-      audio.py            # Whisper transcription
-    detectors/
-      pipeline.py         # Three-layer pipeline with short-circuit
-      rules.py            # 30 regex rules
-      classifier.py       # deepset/prompt-injections distilbert
-      judge.py            # Claude Haiku LLM judge
-    chain/
-      client.py           # web3.py client for Base Sepolia registry
-  contracts/
-    src/ClawGuardRegistry.sol
-    script/Deploy.s.sol
-    foundry.toml
-  demo/
-    trading_agent/
-      agent.py            # Financial agent with ClawGuard toggle
-    attacks/
-      generate_fixtures.py  # Creates .eml, .png, .pdf attack files
-  dashboard/
-    src/App.jsx           # React SPA
-    package.json
-  pyproject.toml
-  Makefile
-  .env.example
-  README.md
+  skill/                  # OpenClaw entrypoints + FastAPI shim
+  extractor/              # Multimodal text extraction
+  detector/               # rules + classifier + llm_judge + verdict + on_chain/
+  blockchain/             # web3 client, mempool, preemptive, counterfactual, defense_agent
+  learning/               # Red/Blue MLP loop, rule_extractor, publisher
+  network/                # poller + applier
+  store/                  # SQLite + Redis Streams (sentinel_streams)
+  zk/                     # RISC Zero host + guests (+ prover.py wrapper)
+  api/gateway.py          # Extends skill.api with /api/v1/* routes
+  contracts/src/          # ThreatRegistry, DefenseProtocol, ConsensusVoting, …
+  config/ schemas/ infra/ # From SENTINEL
+  demo/ dashboard/        # Demo agent + React UI
 ```

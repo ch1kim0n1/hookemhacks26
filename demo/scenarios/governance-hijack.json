@@ -1,0 +1,26 @@
+{
+    "name": "Governance Hijack Attempt",
+    "id": "governance-hijack",
+    "category": "governance",
+    "severity": 10,
+    "summary": "Attacker submits a policy proposal that rotates the on-chain PolicyVerifier to a contract that unconditionally returns true. The proposal carries no matching rule — PolicyCompliance fails to prove.",
+    "expectedOutcome": "Proposal hits api-gateway. PolicyCompliance guest panics (no rule authorises setVerifier). No proof generated. On-chain verifier never sees a receipt. ThreatConfirmedEvent@2 emitted for pattern GOVERNANCE_HIJACK.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/governance-hijack { fakeVerifier: address }"],
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Proposal: rotate PolicyVerifier → 0xBAD...1337" },
+        { "at": 300, "action": "trigger", "endpoint": "POST /api/v1/demo/governance-hijack" },
+        { "at": 2000, "action": "focus", "component": "TrustInterface" },
+        {
+            "at": 3500,
+            "action": "banner",
+            "text": "PolicyCompliance: no rule matches setVerifier — PROOF GENERATION FAILED"
+        },
+        {
+            "at": 5500,
+            "action": "banner",
+            "text": "Chain saw no receipt. The rotation is blocked by math, not by a watchful admin."
+        },
+        { "at": 8000, "action": "focus", "component": "TimeScrollAudit" }
+    ]
+}

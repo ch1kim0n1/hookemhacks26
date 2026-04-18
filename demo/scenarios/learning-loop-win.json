@@ -1,0 +1,22 @@
+{
+    "name": "Learning Loop Generation Win",
+    "id": "learning-loop-win",
+    "category": "benign",
+    "severity": 0,
+    "summary": "Run one adversarial generation; new policy defended 9500/10000 simulated attacks; LearningLoopCorrectness proof accepted on-chain.",
+    "expectedOutcome": "TrainingEvent stream shows generation_complete. LearningLoopCorrectness proof emitted (or cached hit). LearningLoopRegistry commits newPolicyHash.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/trigger-generation { minWinRateBp?: number, minGenerations?: number }"],
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Learning loop: 1 generation vs committed eval batch" },
+        { "at": 400, "action": "trigger", "endpoint": "POST /api/v1/demo/trigger-generation" },
+        { "at": 2500, "action": "focus", "component": "EventFeed" },
+        { "at": 4500, "action": "banner", "text": "9500 / 10000 defended → winRateBp = 9500" },
+        { "at": 6500, "action": "focus", "component": "TimeScrollAudit" },
+        {
+            "at": 8500,
+            "action": "banner",
+            "text": "LearningLoopCorrectness proof accepted. Policy rotation cryptographically earned."
+        }
+    ]
+}

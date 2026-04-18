@@ -1,0 +1,12 @@
+{
+    "name": "Agent Constraint Failure",
+    "id": "agent-constraint",
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Malicious instruction injected: drain all funds" },
+        { "at": 300, "action": "trigger", "endpoint": "POST /api/v1/demo/inject-instruction" },
+        { "at": 1200, "action": "focus", "component": "TrustInterface" },
+        { "at": 2500, "action": "banner", "text": "Proof generation FAILED — no matching policy rule" },
+        { "at": 4500, "action": "banner", "text": "On-chain verifier REJECTED. INVALID_PROOF." },
+        { "at": 6500, "action": "banner", "text": "Action cannot be proven. Math stopped it." }
+    ]
+}

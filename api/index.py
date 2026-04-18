@@ -8,10 +8,10 @@ from http.server import BaseHTTPRequestHandler
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from skill.detectors.pipeline import detect
-from skill.extractors import extract_all
+from detector.verdict import detect
+from extractor import extract_all
 from skill.handler import scan_only
-from skill import db
+from store import sqlite as db
 
 
 class handler(BaseHTTPRequestHandler):

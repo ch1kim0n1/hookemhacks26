@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .handler import scan_only, get_chain_client
-from . import db
+from store import sqlite as db
 
 app = FastAPI(title="ClawGuard API", version="0.1.0")
 

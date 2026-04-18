@@ -1,0 +1,26 @@
+{
+    "name": "Policy Governance Update",
+    "id": "policy-governance-update",
+    "category": "governance",
+    "severity": 0,
+    "summary": "Governance lifts min_confidence for the flash_loan_oracle rule from 8500 to 9000 bp. PolicyRegistry accepts the new policyHash.",
+    "expectedOutcome": "PolicyUpdated on-chain event. policyHash visible in frontend changes. Subsequent PolicyCompliance proofs bind to the new hash. Older cached proofs stop verifying.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/policy-update { ruleId: string, minConfidence: number }"],
+    "steps": [
+        {
+            "at": 0,
+            "action": "banner",
+            "text": "Governance proposal: raise flash_loan_oracle confidence floor → 9000 bp"
+        },
+        { "at": 400, "action": "trigger", "endpoint": "POST /api/v1/demo/policy-update" },
+        { "at": 2500, "action": "focus", "component": "TrustInterface" },
+        { "at": 4500, "action": "banner", "text": "PolicyRegistry.currentPolicyHash rotated. Old proofs invalidated." },
+        { "at": 7000, "action": "focus", "component": "TimeScrollAudit" },
+        {
+            "at": 9000,
+            "action": "banner",
+            "text": "Defense is now strictly tighter. This is the system self-hardening."
+        }
+    ]
+}

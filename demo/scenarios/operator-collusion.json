@@ -1,0 +1,27 @@
+{
+    "name": "Operator Collusion (Quorum Attack)",
+    "id": "operator-collusion",
+    "category": "federation",
+    "severity": 8,
+    "summary": "Two compromised operators (alpha, beta) publish matching OperatorVerdict@1 marking a benign swap as 'confirmed'. Federation is 3-of-4, so quorum is not reached — defense does not fire.",
+    "expectedOutcome": "OperatorVerdicts appear on sentinel.detection.operator.{alpha,beta}. Federation aggregator counts K=2 against N=4, below threshold K=3. No ThreatConfirmedEvent@2. Alert emitted flagging suspicious operator coordination.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/operator-collusion { compromisedOperators: string[], txHash: \"0x...\" }"],
+    "steps": [
+        {
+            "at": 0,
+            "action": "banner",
+            "text": "Operators alpha + beta flag the same benign swap as CONFIRMED (10000 bp)"
+        },
+        { "at": 300, "action": "trigger", "endpoint": "POST /api/v1/demo/operator-collusion" },
+        { "at": 1800, "action": "focus", "component": "AttackIntelGraph" },
+        { "at": 3500, "action": "banner", "text": "Aggregator: 2 confirmations vs. quorum K=3 — below threshold" },
+        { "at": 5500, "action": "focus", "component": "TrustInterface" },
+        {
+            "at": 7500,
+            "action": "banner",
+            "text": "No defense triggered. Quorum held the line against two bad actors."
+        },
+        { "at": 10000, "action": "banner", "text": "Alert: operators alpha + beta flagged for review." }
+    ]
+}
