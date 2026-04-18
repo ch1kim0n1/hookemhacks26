@@ -2,7 +2,9 @@
 
 import asyncio
 import logging
+import os
 import time
+from collections import defaultdict
 
 from fastapi import (
     APIRouter,
@@ -15,36 +17,91 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from . import db
 from .handler import get_chain_client, scan_only
 from .skill_audit import audit_skill_manifest
+
+try:
+    from learning.metrics import snapshot as learning_snapshot
+except ImportError:
+
+    def learning_snapshot():  # type: ignore[misc]
+        return {}
 
 logger = logging.getLogger("clawguard.api")
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="ClawGuard API", version="0.1.0")
 
+_cors_raw = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5175,http://127.0.0.1:5175",
+)
+_allow_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+if not _allow_origins:
+    _allow_origins = ["http://localhost:5175"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
-        "*",
-    ],
-    allow_methods=["*"],
+    allow_origins=_allow_origins,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+)
+
+_RATE_WINDOW_SEC = 60.0
+_RATE_MAX = int(os.getenv("API_RATE_LIMIT_PER_MIN", "100"))
+_MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+_API_TIMEOUT_SEC = float(os.getenv("API_HANDLER_TIMEOUT_SEC", "30.0"))
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Sliding-window-ish rate limiter per client IP."""
+
+    def __init__(self, app, *, max_per_window: int, window_sec: float) -> None:
+        super().__init__(app)
+        self.max_per_window = max_per_window
+        self.window_sec = window_sec
+        self._hits: dict[str, list[float]] = defaultdict(list)
+
+    async def dispatch(self, request: Request, call_next):
+        if request.scope["type"] != "http":
+            return await call_next(request)
+        path = request.url.path
+        if path in ("/api/health", "/docs", "/openapi.json", "/redoc"):
+            return await call_next(request)
+        client = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+        window_start = now - self.window_sec
+        q = self._hits[client]
+        q[:] = [t for t in q if t > window_start]
+        if len(q) >= self.max_per_window:
+            return JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
+        q.append(now)
+        return await call_next(request)
+
+
+app.add_middleware(
+    RateLimitMiddleware, max_per_window=_RATE_MAX, window_sec=_RATE_WINDOW_SEC
 )
 
 
 class RequestLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.scope["type"] != "http":
+            return await call_next(request)
         start = time.perf_counter()
         try:
-            response = await call_next(request)
+            response = await asyncio.wait_for(
+                call_next(request), timeout=_API_TIMEOUT_SEC
+            )
+        except TimeoutError:
+            logger.exception("request_timeout path=%s", request.url.path)
+            return JSONResponse({"detail": "request timeout"}, status_code=504)
         except Exception:
             logger.exception("request_failed path=%s", request.url.path)
             raise
@@ -63,7 +120,7 @@ app.add_middleware(RequestLogMiddleware)
 
 
 class ScanRequest(BaseModel):
-    content: str
+    content: str = Field(..., max_length=512_000)
     content_type: str | None = None
     tool_name: str = "manual"
 
@@ -71,8 +128,7 @@ class ScanRequest(BaseModel):
 @app.post("/api/scan")
 async def scan_text(req: ScanRequest):
     """Scan text content for injection attempts."""
-    result = scan_only(req.content, content_type=req.content_type,
-                       tool_name=req.tool_name)
+    result = scan_only(req.content, content_type=req.content_type, tool_name=req.tool_name)
     return result
 
 
@@ -80,8 +136,17 @@ async def scan_text(req: ScanRequest):
 async def scan_file(file: UploadFile = File(...), tool_name: str = Form("manual")):
     """Scan an uploaded file for injection attempts."""
     content = await file.read()
-    result = scan_only(content, content_type=file.content_type,
-                       filename=file.filename, tool_name=tool_name)
+    if len(content) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"file too large (max {_MAX_UPLOAD_BYTES} bytes)",
+        )
+    result = scan_only(
+        content,
+        content_type=file.content_type,
+        filename=file.filename,
+        tool_name=tool_name,
+    )
     return result
 
 
@@ -106,8 +171,7 @@ async def get_threats(limit: int = 100):
 @app.post("/api/replay")
 async def replay_attack(req: ScanRequest):
     """Replay an attack for demo purposes — same as scan but clearly labeled."""
-    result = scan_only(req.content, content_type=req.content_type,
-                       tool_name="replay")
+    result = scan_only(req.content, content_type=req.content_type, tool_name="replay")
     return result
 
 
@@ -183,6 +247,9 @@ async def scenario_detail(scenario_id: str):
 
 @app.get("/api/network")
 async def network_view():
+    peer_urls = [
+        p.strip() for p in os.getenv("CLAWGUARD_PEER_URLS", "").split(",") if p.strip()
+    ]
     client = get_chain_client()
     events = client.poll_recent(15) if client.available else []
     return {
@@ -190,23 +257,38 @@ async def network_view():
             {"id": "agent-local", "role": "openclaw-agent", "status": "ok"},
             {"id": "clawguard-api", "role": "middleware", "status": "ok"},
         ],
+        "peer_urls_configured": peer_urls,
         "on_chain_events": events,
     }
 
 
 @app.get("/api/learning")
 async def learning_metrics():
+    snap = learning_snapshot()
     return {
         "mode": "inline",
-        "note": "Heuristic + optional ML classifier run inside the API process in this build.",
+        "note": "Red/blue round metrics tracked in-process for this API build.",
         "stats": db.get_stats(),
+        "variations_generated": snap.get("variations_generated", 0),
+        "rules_extracted": snap.get("rules_extracted", 0),
+        "rounds_completed": snap.get("rounds_completed", 0),
+        "accuracy_trend": snap.get("accuracy_trend", []),
+        "model_updates": snap.get("model_updates", []),
+        "last_publish_ok": snap.get("last_publish_ok"),
+        "last_update": snap.get("last_update_ts"),
     }
 
 
-async def _push_stats_websocket(websocket: WebSocket) -> None:
+async def _push_updates_websocket(websocket: WebSocket) -> None:
     await websocket.accept()
+    last_id = db.get_max_detection_id()
     try:
         while True:
+            new_rows = db.get_detections_after_id(last_id, limit=50)
+            for row in new_rows:
+                last_id = max(last_id, int(row["id"]))
+                if row.get("verdict") and row["verdict"] != "pass":
+                    await websocket.send_json({"type": "detection", "detection": row})
             await websocket.send_json(
                 {
                     "type": "stats",
@@ -214,21 +296,21 @@ async def _push_stats_websocket(websocket: WebSocket) -> None:
                     "cached_threats": db.get_cached_threat_count(),
                 }
             )
-            await asyncio.sleep(3.0)
+            await asyncio.sleep(0.2)
     except WebSocketDisconnect:
         return
 
 
 @app.websocket("/ws/updates")
 async def updates_stream(websocket: WebSocket):
-    """Push periodic stats for dashboard live views."""
-    await _push_stats_websocket(websocket)
+    """Live stats + non-pass detections as they are logged."""
+    await _push_updates_websocket(websocket)
 
 
 @app.websocket("/updates")
 async def updates_stream_short_path(websocket: WebSocket):
     """Alias for clients expecting `/updates` at app root (proxied)."""
-    await _push_stats_websocket(websocket)
+    await _push_updates_websocket(websocket)
 
 
 v1 = APIRouter(prefix="/api/v1")
@@ -261,7 +343,7 @@ async def v1_learning():
 
 @v1.websocket("/updates")
 async def v1_updates(websocket: WebSocket):
-    await _push_stats_websocket(websocket)
+    await _push_updates_websocket(websocket)
 
 
 app.include_router(v1)

@@ -87,6 +87,30 @@ def log_detection(tool_name: str, modality: str, verdict: str, confidence: float
     conn.close()
 
 
+def get_max_detection_id() -> int:
+    conn = get_conn()
+    row = conn.execute("SELECT COALESCE(MAX(id), 0) FROM detection_log").fetchone()
+    conn.close()
+    return int(row[0]) if row else 0
+
+
+def get_detections_after_id(after_id: int, limit: int = 20) -> list[dict]:
+    """Rows with id > after_id, oldest first (for WebSocket streaming)."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM detection_log WHERE id > ? ORDER BY id ASC LIMIT ?",
+        (after_id, limit),
+    ).fetchall()
+    conn.close()
+    results = []
+    for row in rows:
+        d = dict(row)
+        d["reasons"] = json.loads(d["reasons"]) if d["reasons"] else []
+        d["source_manifest"] = json.loads(d["source_manifest"]) if d["source_manifest"] else None
+        results.append(d)
+    return results
+
+
 def get_recent_detections(limit: int = 50) -> list[dict]:
     conn = get_conn()
     rows = conn.execute(

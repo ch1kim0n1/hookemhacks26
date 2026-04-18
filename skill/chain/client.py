@@ -2,16 +2,19 @@
 
 import hashlib
 import json
+import logging
 import os
 import threading
+
+from ..db import cache_threat, check_threat_cache
+
+logger = logging.getLogger(__name__)
 
 try:
     from web3 import Web3
     HAS_WEB3 = True
 except ImportError:
     HAS_WEB3 = False
-
-from ..db import cache_threat, check_threat_cache
 
 # ABI for ClawGuardRegistry — only the functions we call
 REGISTRY_ABI = json.loads("""[
@@ -110,12 +113,21 @@ class ChainClient:
 
     def __init__(self):
         self.rpc_url = os.getenv("BASE_SEPOLIA_RPC_URL", "https://sepolia.base.org")
-        self.registry_address = os.getenv("CLAWGUARD_REGISTRY_ADDRESS", "")
-        self.private_key = os.getenv("CLAWGUARD_PRIVATE_KEY", "")
+        self.registry_address = os.getenv("CLAWGUARD_REGISTRY_ADDRESS", "").strip()
+        self.private_key = os.getenv("CLAWGUARD_PRIVATE_KEY", "").strip()
         self._w3 = None
         self._contract = None
         self._poll_thread = None
         self._stop_polling = threading.Event()
+        if not self.registry_address:
+            logger.warning(
+                "CLAWGUARD_REGISTRY_ADDRESS is unset — on-chain registry calls are disabled "
+                "(threat cache / publish still work locally). Set env for Base Sepolia."
+            )
+        elif not self.private_key:
+            logger.warning(
+                "CLAWGUARD_PRIVATE_KEY is unset — publishAttack and live polls are disabled."
+            )
 
     @property
     def available(self) -> bool:

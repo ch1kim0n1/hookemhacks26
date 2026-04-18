@@ -242,6 +242,7 @@ function Scanner() {
 
 function BlockedAttacksFeed() {
   const [attacks, setAttacks] = useState([])
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -250,8 +251,13 @@ function BlockedAttacksFeed() {
         if (res.ok) {
           const data = await res.json()
           setAttacks(data.attacks || [])
+          setError(null)
+        } else {
+          setError(`HTTP ${res.status}`)
         }
-      } catch {}
+      } catch (e) {
+        setError(e?.message || 'Failed to load attacks')
+      }
     }
     load()
     const id = setInterval(load, 4000)
@@ -261,6 +267,11 @@ function BlockedAttacksFeed() {
   return (
     <div className="space-y-4">
       <div className="text-xs text-zinc-500 uppercase tracking-wider">Live blocked / non-pass (from API)</div>
+      {error && (
+        <div className="text-sm text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">
+          {error}
+        </div>
+      )}
       {attacks.length === 0 ? (
         <div className="text-sm text-zinc-600 py-6 text-center">No blocked attempts logged yet.</div>
       ) : (
@@ -283,36 +294,48 @@ function BlockedAttacksFeed() {
 function ScenarioCards() {
   const ids = ['email-injection', 'pdf-hidden', 'web-fetch']
   const [data, setData] = useState({})
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       const out = {}
-      for (const id of ids) {
-        try {
+      try {
+        for (const id of ids) {
           const r = await fetch(`${API}/scenario/${id}`)
           if (r.ok) out[id] = await r.json()
-        } catch {}
+        }
+        if (!cancelled) {
+          setData(out)
+          setError(null)
+        }
+      } catch (e) {
+        if (!cancelled) setError(e?.message || 'Failed to load scenarios')
       }
-      if (!cancelled) setData(out)
     })()
     return () => { cancelled = true }
   }, [])
 
   return (
-    <div className="grid md:grid-cols-3 gap-4">
-      {ids.map(id => (
-        <div key={id} className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4">
-          <div className="text-sm font-semibold text-zinc-200">{data[id]?.name || id}</div>
-          <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{data[id]?.blocked_sample || '—'}</p>
-        </div>
-      ))}
+    <div className="space-y-3">
+      {error && (
+        <div className="text-sm text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>
+      )}
+      <div className="grid md:grid-cols-3 gap-4">
+        {ids.map(id => (
+          <div key={id} className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4">
+            <div className="text-sm font-semibold text-zinc-200">{data[id]?.name || id}</div>
+            <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{data[id]?.blocked_sample || '—'}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
 function ThreatPropagationGraph() {
   const [events, setEvents] = useState([])
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -321,8 +344,13 @@ function ThreatPropagationGraph() {
         if (r.ok) {
           const j = await r.json()
           setEvents(j.on_chain_events || [])
+          setError(null)
+        } else {
+          setError(`HTTP ${r.status}`)
         }
-      } catch {}
+      } catch (e) {
+        setError(e?.message || 'Failed to load network view')
+      }
     }
     load()
     const id = setInterval(load, 8000)
@@ -331,6 +359,9 @@ function ThreatPropagationGraph() {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="text-sm text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>
+      )}
       <div className="relative h-48 bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
         <svg viewBox="0 0 400 160" className="w-full h-full text-zinc-600">
           <line x1="80" y1="80" x2="200" y2="40" stroke="currentColor" strokeWidth="1.5" />
@@ -364,23 +395,36 @@ function ThreatPropagationGraph() {
 
 function LearningStatsPanel() {
   const [learning, setLearning] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const load = async () => {
       try {
         const r = await fetch(`${API}/learning`)
-        if (r.ok) setLearning(await r.json())
-      } catch {}
+        if (r.ok) {
+          setLearning(await r.json())
+          setError(null)
+        } else {
+          setError(`HTTP ${r.status}`)
+        }
+      } catch (e) {
+        setError(e?.message || 'Failed to load learning metrics')
+      }
     }
     load()
     const id = setInterval(load, 6000)
     return () => clearInterval(id)
   }, [])
 
+  if (error) {
+    return (
+      <div className="text-sm text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>
+    )
+  }
   if (!learning) return <div className="text-zinc-600 text-sm">Loading…</div>
 
   return (
-    <div className="grid sm:grid-cols-2 gap-4">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
         <div className="text-xs text-zinc-500 uppercase">Mode</div>
         <div className="text-lg font-mono text-zinc-200">{learning.mode}</div>
@@ -390,6 +434,11 @@ function LearningStatsPanel() {
         <div className="text-xs text-zinc-500 uppercase">Total scans</div>
         <div className="text-2xl font-bold text-violet-400">{learning.stats?.total_scans ?? '—'}</div>
       </div>
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+        <div className="text-xs text-zinc-500 uppercase">Learning rounds</div>
+        <div className="text-2xl font-bold text-emerald-400">{learning.rounds_completed ?? 0}</div>
+        <p className="text-xs text-zinc-500 mt-1">Variations {learning.variations_generated ?? 0} · Rules {learning.rules_extracted ?? 0}</p>
+      </div>
     </div>
   )
 }
@@ -397,6 +446,7 @@ function LearningStatsPanel() {
 function NetworkFeed() {
   const [detections, setDetections] = useState([])
   const [stats, setStats] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -407,7 +457,10 @@ function NetworkFeed() {
         ])
         if (dRes.ok) setDetections(await dRes.json())
         if (sRes.ok) setStats(await sRes.json())
-      } catch {}
+        setError(null)
+      } catch (e) {
+        setError(e?.message || 'Failed to load activity')
+      }
     }
     fetchData()
     const id = setInterval(fetchData, 5000)
@@ -416,6 +469,9 @@ function NetworkFeed() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="text-sm text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>
+      )}
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-4 gap-3">

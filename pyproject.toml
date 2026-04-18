@@ -36,4 +36,4 @@ include = ["skill*", "learning*", "network*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["skill/tests", "learning/tests", "network/tests", "tests/contracts"]
+testpaths = ["skill/tests", "learning/tests", "network/tests", "tests/contracts", "tests/performance"]

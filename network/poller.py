@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from web3 import Web3
@@ -63,9 +66,26 @@ async def poll_attacks_loop(
     c = w3.eth.contract(address=Web3.to_checksum_address(addr), abi=abi)
     last = from_index
     while True:
-        attacks = c.functions.getAttacksSince(last).call()
-        for _a in attacks:
-            last += 1
+        attacks = None
+        for attempt in range(3):
+            try:
+                attacks = c.functions.getAttacksSince(last).call()
+                break
+            except Exception as exc:
+                wait = 2**attempt
+                logger.warning(
+                    "getAttacksSince failed (attempt %s/3): %s; retry in %ss",
+                    attempt + 1,
+                    exc,
+                    wait,
+                )
+                if attempt == 2:
+                    logger.error("getAttacksSince aborted after retries: %s", exc)
+                else:
+                    await asyncio.sleep(wait)
+        if attacks is not None:
+            for _a in attacks:
+                last += 1
         await asyncio.sleep(interval_s)
 
 

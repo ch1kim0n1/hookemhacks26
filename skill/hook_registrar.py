@@ -7,9 +7,12 @@ never hang if extractors or the ML stack misbehave.
 from __future__ import annotations
 
 import concurrent.futures
+import os
 from typing import Final
 
 from .handler import intercept
+
+_DEFAULT_TIMEOUT = float(os.getenv("CLAWGUARD_HOOK_TIMEOUT_SEC", "3.0"))
 
 # Tools that map to inbound content modalities (aligned with SKILL.md pre_tool list).
 HOOKED_TOOLS: Final[frozenset[str]] = frozenset(
@@ -30,14 +33,19 @@ def intercept_entry(
     content_type: str | None = None,
     filename: str | None = None,
     enabled: bool = True,
-    timeout_sec: float = 0.95,
+    timeout_sec: float | None = None,
 ) -> dict:
     """Single hook entry for OpenClaw: runs `intercept` under a timeout.
 
     On timeout, returns ``action="pass"`` with a low-confidence verdict (graceful
     degradation). ``ContentBlocked`` is re-raised from the worker thread when
     appropriate.
+
+    Timeout defaults to ``CLAWGUARD_HOOK_TIMEOUT_SEC`` (default 3.0s) so OCR / PDF
+    extraction can finish; override per-call with ``timeout_sec``.
     """
+    if timeout_sec is None:
+        timeout_sec = _DEFAULT_TIMEOUT
     if not enabled:
         return intercept(
             tool_name, content, content_type=content_type, filename=filename, enabled=False

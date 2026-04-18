@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 
 from .blue_agent import BlueAgent
+from .metrics import record_round
 from .publisher import publish_defense_update
 from .red_agent import RedAgent
 from .rule_extractor import extract_from_variations
+
+logger = logging.getLogger(__name__)
 
 
 class LearningOrchestrator:
@@ -22,5 +26,27 @@ class LearningOrchestrator:
         score = self.blue.forward([0.2, 0.4, 0.1, 0.0, 0.0])
         payload = {"rules": rules, "blue_score": score, "variants": len(variants)}
         derived = hashlib.sha256(seed_prompt.encode()).digest()
-        publish_defense_update(derived_from_attack_hash=derived)
+        publish_ok: bool | None = None
+        try:
+            result = publish_defense_update(derived_from_attack_hash=derived)
+            if isinstance(result, dict):
+                publish_ok = bool(result.get("ok"))
+                if not publish_ok and result.get("queued"):
+                    logger.info("defense_update_queued: %s", result.get("error", "offline"))
+                elif not publish_ok:
+                    logger.warning("defense_update_failed: %s", result.get("error", result))
+                else:
+                    logger.info("defense_update_ok")
+            else:
+                publish_ok = True
+        except Exception as exc:
+            logger.exception("defense_update_exception: %s", exc)
+            publish_ok = False
+        payload["publish_ok"] = publish_ok
+        record_round(
+            variations=len(variants),
+            rules=len(rules),
+            blue_score=score,
+            publish_ok=publish_ok,
+        )
         return payload

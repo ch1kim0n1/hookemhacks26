@@ -4,8 +4,34 @@ from __future__ import annotations
 import re
 from collections import Counter
 
+# Very common tokens that make an LCS too generic for auto-blocking.
+_GENERIC_TOKENS = frozenset(
+    {
+        "sell",
+        "all",
+        "buy",
+        "the",
+        "now",
+        "immediate",
+        "and",
+        "or",
+        "for",
+        "a",
+        "an",
+        "to",
+        "of",
+        "in",
+        "on",
+        "at",
+        "is",
+        "it",
+        "as",
+        "be",
+    }
+)
 
-def longest_common_substring(strings: list[str], min_len: int = 8) -> str | None:
+
+def longest_common_substring(strings: list[str], min_len: int = 12) -> str | None:
     if len(strings) < 2:
         return None
     base = min(strings, key=len)
@@ -17,13 +43,22 @@ def longest_common_substring(strings: list[str], min_len: int = 8) -> str | None
     return None
 
 
+def _lcs_is_substantive(phrase: str) -> bool:
+    """Reject LCS that are mostly stopwords (e.g. 'sell all')."""
+    tokens = [t for t in re.split(r"[\W_]+", phrase.lower()) if len(t) >= 2]
+    if len(tokens) < 2:
+        return False
+    substantive = [t for t in tokens if t not in _GENERIC_TOKENS and len(t) >= 4]
+    return len(substantive) >= 2
+
+
 def suggest_rules_from_variations(variations: list[str]) -> list[str]:
     """Return regex-like patterns for high-frequency tokens."""
     if not variations:
         return []
     patterns: list[str] = []
-    lcs = longest_common_substring(variations)
-    if lcs and len(lcs) >= 8:
+    lcs = longest_common_substring(variations, min_len=12)
+    if lcs and _lcs_is_substantive(lcs):
         escaped = re.escape(lcs[:48])
         patterns.append(escaped)
     tokens = Counter()
