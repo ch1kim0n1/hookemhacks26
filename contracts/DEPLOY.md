@@ -42,6 +42,11 @@ Defense policy and **defense updates** (`publishDefenseUpdate` / `updatePolicy`)
 
 Quorum validation is implemented by **`ConsensusVoting`** (`src/ConsensusVoting.sol`): configurable **K-of-N** thresholds, **`slash`** for malicious operators, and `submitBundle` / `isAccepted`. See `contracts/test/ConsensusVoting.t.sol`.
 
+## Integration / verification
+
+- **Local / CI:** run `forge test` in `contracts/` (covers `publishAttack` / `isKnownAttack`, `publishDefenseUpdate`, quorum, pause, victim pool, and `Phase1Integration.t.sol` smoke).
+- **Base Sepolia:** deploy with `forge script` using `.env`, then record addresses in `.env` / `.env.example` placeholders. On-chain verification uses `BASESCAN_API_KEY` as in the registry section above.
+
 ## x402 bounty integration
 
-HTTP 402 “payment required” flows are **not** wired on-chain in this registry. Bounty or micropayment hooks belong in the API / coordinator layer; track separately from contract deployment.
+HTTP 402 “payment required” flows are **not** wired on-chain; there is **no** on-chain x402 test in this repo. Bounty or micropayment hooks belong in the API / coordinator layer.

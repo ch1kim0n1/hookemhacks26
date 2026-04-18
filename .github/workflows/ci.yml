@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
-      - run: pytest skill/tests -v
+      - run: pytest skill/tests tests/contracts -v
       - run: ruff check skill/
       - run: bandit -r skill/ -ll -q
 
