@@ -6,8 +6,6 @@ vars are missing — so the test suite runs without an RPC node.
 """
 from __future__ import annotations
 
-import hashlib
-
 from learning.publisher import (
     DEFENSE_PROTOCOL_ABI,
     build_publish_payload,

@@ -6,17 +6,17 @@ author: ClawGuard Team
 hooks:
   pre_tool:
     - tool: email_read
-      handler: handler.intercept
+      handler: hook_registrar.intercept_entry
     - tool: web_fetch
-      handler: handler.intercept
+      handler: hook_registrar.intercept_entry
     - tool: file_read
-      handler: handler.intercept
+      handler: hook_registrar.intercept_entry
     - tool: image_view
-      handler: handler.intercept
+      handler: hook_registrar.intercept_entry
     - tool: pdf_read
-      handler: handler.intercept
+      handler: hook_registrar.intercept_entry
     - tool: audio_listen
-      handler: handler.intercept
+      handler: hook_registrar.intercept_entry
 dependencies:
   - pytesseract
   - pdfplumber

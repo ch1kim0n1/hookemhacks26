@@ -8,15 +8,15 @@ interface IVerifier {
         returns (bool);
 }
 
-/// @title PolicyRegistry
+/// @title DefenseProtocol
 /// @notice Authority for what actions the defense agent may take. Every
 ///         defense tx flows through `verifyAndExecute`, which checks the
 ///         ZK policy proof, asserts the policy hash in the public inputs
 ///         matches the current policy, and then `call`s the target with
 ///         the authorized action.
-/// @dev    Storage / events / function signatures per
-///         absolute-docs/02_smart_contracts.md §PolicyRegistry.
-contract PolicyRegistry {
+/// @dev    Formerly named PolicyRegistry in internal docs; publishes defense updates via
+///         `publishDefenseUpdate` (consensus-validated learning loop).
+contract DefenseProtocol {
     // --- Storage ---
     bytes32 public currentPolicyHash;
     uint256 public policyVersion;
@@ -39,13 +39,13 @@ contract PolicyRegistry {
 
     // --- Modifiers ---
     modifier onlyOwner() {
-        require(msg.sender == owner, "PolicyRegistry: not owner");
+        require(msg.sender == owner, "DefenseProtocol: not owner");
         _;
     }
 
     constructor(address _policyVerifier, address _learningVerifier) {
-        require(_policyVerifier != address(0), "PolicyRegistry: zero verifier");
-        require(_learningVerifier != address(0), "PolicyRegistry: zero learning");
+        require(_policyVerifier != address(0), "DefenseProtocol: zero verifier");
+        require(_learningVerifier != address(0), "DefenseProtocol: zero learning");
         owner = msg.sender;
         policyVerifier = _policyVerifier;
         learningVerifier = _learningVerifier;
@@ -53,9 +53,9 @@ contract PolicyRegistry {
 
     /// @notice One-time initialization of policy hash + authorized agent.
     function initialize(bytes32 policyHash, address agent) external onlyOwner {
-        require(policyVersion == 0, "PolicyRegistry: already initialized");
-        require(policyHash != bytes32(0), "PolicyRegistry: empty policy hash");
-        require(agent != address(0), "PolicyRegistry: zero agent");
+        require(policyVersion == 0, "DefenseProtocol: already initialized");
+        require(policyHash != bytes32(0), "DefenseProtocol: empty policy hash");
+        require(agent != address(0), "DefenseProtocol: zero agent");
         currentPolicyHash = policyHash;
         policyVersion = 1;
         defenseAgent = agent;
@@ -73,11 +73,11 @@ contract PolicyRegistry {
         bytes calldata proof,
         bytes32[] calldata publicInputs
     ) external returns (bool success) {
-        require(msg.sender == defenseAgent, "PolicyRegistry: not agent");
-        require(publicInputs.length >= 3, "PolicyRegistry: bad inputs");
+        require(msg.sender == defenseAgent, "DefenseProtocol: not agent");
+        require(publicInputs.length >= 3, "DefenseProtocol: bad inputs");
 
         bytes32 actionHash = publicInputs[0];
-        require(publicInputs[1] == currentPolicyHash, "PolicyRegistry: stale policy");
+        require(publicInputs[1] == currentPolicyHash, "DefenseProtocol: stale policy");
         // publicInputs[2] = eventId — not enforced on-chain (off-chain correlation)
 
         // Bind the provided calldata to the committed action hash. Prevents
@@ -85,13 +85,13 @@ contract PolicyRegistry {
         // to execute.
         require(
             keccak256(abi.encodePacked(target, action)) == actionHash,
-            "PolicyRegistry: action mismatch"
+            "DefenseProtocol: action mismatch"
         );
 
         bool verified = IVerifier(policyVerifier).verify(proof, publicInputs);
         if (!verified) {
             emit ActionRejected(actionHash, "INVALID_PROOF");
-            revert("PolicyRegistry: invalid proof");
+            revert("DefenseProtocol: invalid proof");
         }
 
         bytes4 selector;
@@ -104,7 +104,7 @@ contract PolicyRegistry {
             emit ActionExecuted(actionHash, target, selector, block.number);
         } else {
             emit ActionRejected(actionHash, "TARGET_CALL_FAILED");
-            revert("PolicyRegistry: target call failed");
+            revert("DefenseProtocol: target call failed");
         }
     }
 
@@ -114,31 +114,44 @@ contract PolicyRegistry {
         learningVerifier = _verifier;
     }
 
-    /// @notice Update the policy hash with a proof that the update was earned
-    ///         through adversarial training (Red/Blue co-evolution).
-    ///         publicInputs = [oldHash, newHash, winRate, eventBatchRoot].
-    /// @param newPolicyHash The new policy hash to commit
-    /// @param learningProof The LearningLoopCorrectness proof bytes
-    /// @param publicInputs Expected: [oldPolicyHash, newPolicyHash, minWinRate, generationCount]
-    /// @return true on success
+    /// @notice Primary entrypoint: publish a defense update after consensus / learning validation.
+    /// @param newDefenseHash New committed defense policy hash
+    /// @param proof Learning or quorum attestation proof bytes
+    /// @param publicInputs Expected: [oldPolicyHash, newPolicyHash, ...]
+    function publishDefenseUpdate(
+        bytes32 newDefenseHash,
+        bytes calldata proof,
+        bytes32[] calldata publicInputs
+    ) external returns (bool) {
+        return _applyDefenseUpdate(newDefenseHash, proof, publicInputs);
+    }
+
+    /// @notice Legacy name for `publishDefenseUpdate`.
     function updatePolicy(
         bytes32 newPolicyHash,
         bytes calldata learningProof,
         bytes32[] calldata publicInputs
     ) external returns (bool) {
-        require(newPolicyHash != bytes32(0), "PolicyRegistry: empty policy hash");
-        require(newPolicyHash != currentPolicyHash, "PolicyRegistry: unchanged");
-        require(publicInputs.length >= 2, "PolicyRegistry: bad inputs");
-        require(publicInputs[0] == currentPolicyHash, "PolicyRegistry: stale old hash");
-        require(publicInputs[1] == newPolicyHash, "PolicyRegistry: new hash mismatch");
+        return _applyDefenseUpdate(newPolicyHash, learningProof, publicInputs);
+    }
+
+    /// @dev Shared body for defense hash updates (learning-loop or quorum proofs).
+    function _applyDefenseUpdate(
+        bytes32 newPolicyHash,
+        bytes calldata learningProof,
+        bytes32[] calldata publicInputs
+    ) internal returns (bool) {
+        require(newPolicyHash != bytes32(0), "DefenseProtocol: empty policy hash");
+        require(newPolicyHash != currentPolicyHash, "DefenseProtocol: unchanged");
+        require(publicInputs.length >= 2, "DefenseProtocol: bad inputs");
+        require(publicInputs[0] == currentPolicyHash, "DefenseProtocol: stale old hash");
+        require(publicInputs[1] == newPolicyHash, "DefenseProtocol: new hash mismatch");
 
         if (learningVerifier != address(0)) {
-            // Production path: delegate to the real verifier contract.
             bool verified = IVerifier(learningVerifier).verify(learningProof, publicInputs);
-            require(verified, "PolicyRegistry: invalid learning proof");
+            require(verified, "DefenseProtocol: invalid learning proof");
         } else {
-            // Dev mode (Phase 4): learningVerifier not set, just require non-empty proof.
-            require(learningProof.length > 0, "PolicyRegistry: empty proof");
+            require(learningProof.length > 0, "DefenseProtocol: empty proof");
         }
 
         bytes32 oldHash = currentPolicyHash;

@@ -240,6 +240,160 @@ function Scanner() {
   )
 }
 
+function BlockedAttacksFeed() {
+  const [attacks, setAttacks] = useState([])
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/attacks?limit=30`)
+        if (res.ok) {
+          const data = await res.json()
+          setAttacks(data.attacks || [])
+        }
+      } catch {}
+    }
+    load()
+    const id = setInterval(load, 4000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="space-y-4">
+      <div className="text-xs text-zinc-500 uppercase tracking-wider">Live blocked / non-pass (from API)</div>
+      {attacks.length === 0 ? (
+        <div className="text-sm text-zinc-600 py-6 text-center">No blocked attempts logged yet.</div>
+      ) : (
+        <div className="space-y-2 max-h-[420px] overflow-y-auto">
+          {attacks.map((a, i) => (
+            <div key={a.id || i} className="bg-red-950/20 border border-red-900/30 rounded-lg p-3 text-sm">
+              <div className="flex justify-between gap-2">
+                <VerdictBadge verdict={a.verdict} />
+                <span className="text-xs text-zinc-600 font-mono">{a.modality}</span>
+              </div>
+              {a.content_preview && <div className="text-xs text-zinc-500 mt-1 truncate">{a.content_preview}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ScenarioCards() {
+  const ids = ['email-injection', 'pdf-hidden', 'web-fetch']
+  const [data, setData] = useState({})
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const out = {}
+      for (const id of ids) {
+        try {
+          const r = await fetch(`${API}/scenario/${id}`)
+          if (r.ok) out[id] = await r.json()
+        } catch {}
+      }
+      if (!cancelled) setData(out)
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <div className="grid md:grid-cols-3 gap-4">
+      {ids.map(id => (
+        <div key={id} className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4">
+          <div className="text-sm font-semibold text-zinc-200">{data[id]?.name || id}</div>
+          <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{data[id]?.blocked_sample || '—'}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ThreatPropagationGraph() {
+  const [events, setEvents] = useState([])
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const r = await fetch(`${API}/network`)
+        if (r.ok) {
+          const j = await r.json()
+          setEvents(j.on_chain_events || [])
+        }
+      } catch {}
+    }
+    load()
+    const id = setInterval(load, 8000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="space-y-4">
+      <div className="relative h-48 bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+        <svg viewBox="0 0 400 160" className="w-full h-full text-zinc-600">
+          <line x1="80" y1="80" x2="200" y2="40" stroke="currentColor" strokeWidth="1.5" />
+          <line x1="200" y1="40" x2="320" y2="80" stroke="currentColor" strokeWidth="1.5" />
+          <line x1="80" y1="80" x2="200" y2="120" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+          <line x1="200" y1="120" x2="320" y2="80" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+          <circle cx="80" cy="80" r="14" className="fill-violet-600/40 stroke-violet-500" />
+          <circle cx="200" cy="40" r="14" className="fill-emerald-600/30 stroke-emerald-500" />
+          <circle cx="200" cy="120" r="12" className="fill-amber-600/25 stroke-amber-500" />
+          <circle cx="320" cy="80" r="14" className="fill-sky-600/30 stroke-sky-500" />
+        </svg>
+        <div className="absolute bottom-2 left-2 right-2 flex justify-between text-[10px] text-zinc-500 font-mono">
+          <span>agent</span>
+          <span>clawguard</span>
+          <span>registry</span>
+        </div>
+      </div>
+      <div className="text-xs text-zinc-500 uppercase tracking-wider">Recent on-chain events</div>
+      {events.length === 0 ? (
+        <div className="text-sm text-zinc-600">No registry events (configure chain env).</div>
+      ) : (
+        <ul className="text-xs font-mono text-zinc-400 space-y-1 max-h-32 overflow-y-auto">
+          {events.slice(0, 8).map((e, i) => (
+            <li key={i}>{e.category || 'attack'} · {String(e.pattern_hash || '').slice(0, 18)}…</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function LearningStatsPanel() {
+  const [learning, setLearning] = useState(null)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const r = await fetch(`${API}/learning`)
+        if (r.ok) setLearning(await r.json())
+      } catch {}
+    }
+    load()
+    const id = setInterval(load, 6000)
+    return () => clearInterval(id)
+  }, [])
+
+  if (!learning) return <div className="text-zinc-600 text-sm">Loading…</div>
+
+  return (
+    <div className="grid sm:grid-cols-2 gap-4">
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+        <div className="text-xs text-zinc-500 uppercase">Mode</div>
+        <div className="text-lg font-mono text-zinc-200">{learning.mode}</div>
+        <p className="text-xs text-zinc-500 mt-2">{learning.note}</p>
+      </div>
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+        <div className="text-xs text-zinc-500 uppercase">Total scans</div>
+        <div className="text-2xl font-bold text-violet-400">{learning.stats?.total_scans ?? '—'}</div>
+      </div>
+    </div>
+  )
+}
+
 function NetworkFeed() {
   const [detections, setDetections] = useState([])
   const [stats, setStats] = useState(null)
@@ -393,7 +547,11 @@ export default function App() {
           <div className="flex gap-6">
             {[
               { id: 'scan', label: 'Try It' },
-              { id: 'network', label: 'Network Feed' },
+              { id: 'blocked', label: 'Blocked feed' },
+              { id: 'scenarios', label: 'Scenarios' },
+              { id: 'graph', label: 'Propagation' },
+              { id: 'learning', label: 'Learning' },
+              { id: 'network', label: 'Activity' },
               { id: 'how', label: 'How It Works' },
             ].map(t => (
               <button
@@ -415,6 +573,10 @@ export default function App() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
         {tab === 'scan' && <Scanner />}
+        {tab === 'blocked' && <BlockedAttacksFeed />}
+        {tab === 'scenarios' && <ScenarioCards />}
+        {tab === 'graph' && <ThreatPropagationGraph />}
+        {tab === 'learning' && <LearningStatsPanel />}
         {tab === 'network' && <NetworkFeed />}
         {tab === 'how' && <HowItWorks />}
       </main>

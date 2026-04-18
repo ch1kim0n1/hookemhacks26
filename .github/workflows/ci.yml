@@ -17,7 +17,7 @@ jobs:
       run:
         working-directory: contracts
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: foundry-rs/foundry-toolchain@v1
       - run: forge test -vvv
 
@@ -25,12 +25,12 @@ jobs:
     name: Python (pytest + ruff + bandit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
-      - run: pytest skill/tests -v
+      - run: pytest -v
       - run: ruff check skill/
       - run: bandit -r skill/ -ll -q
 
@@ -41,8 +41,8 @@ jobs:
       run:
         working-directory: dashboard
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
