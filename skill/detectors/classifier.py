@@ -17,13 +17,16 @@ _classifier = None
 def _get_classifier():
     global _classifier
     if _classifier is None and HAS_TRANSFORMERS:
-        _classifier = pipeline(
-            "text-classification",
-            model=MODEL_NAME,
-            tokenizer=MODEL_NAME,
-            device=-1,  # CPU
-        )
-    return _classifier
+        try:
+            _classifier = pipeline(
+                "text-classification",
+                model=MODEL_NAME,
+                tokenizer=MODEL_NAME,
+                device=-1,  # CPU
+            )
+        except Exception:
+            _classifier = False  # mark as failed so we don't retry
+    return _classifier if _classifier else None
 
 
 def classify(text: str) -> dict:

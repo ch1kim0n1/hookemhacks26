@@ -7,6 +7,11 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "clawguard.db"
 
+# Use /tmp on Vercel (writable), fall back to project dir locally
+import os
+if os.environ.get("VERCEL"):
+    DB_PATH = Path("/tmp/clawguard.db")
+
 
 def get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(str(DB_PATH))
