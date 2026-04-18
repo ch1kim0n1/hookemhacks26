@@ -8,7 +8,7 @@ try:
 except ImportError:
     HAS_TRANSFORMERS = False
 
-MODEL_NAME = "deepset/prompt-injections"
+MODEL_NAME = "protectai/deberta-v3-base-prompt-injection-v2"
 
 # Lazy-loaded singleton
 _classifier = None
@@ -57,7 +57,7 @@ def classify(text: str) -> dict:
         label = result["label"]
         score = result["score"]
 
-        # deepset model labels: INJECTION / LEGIT
+        # protectai model labels: INJECTION / SAFE
         is_injection = label.upper() == "INJECTION"
 
         return {
