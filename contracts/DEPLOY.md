@@ -28,6 +28,10 @@ forge verify-contract <ADDRESS> ClawGuardRegistry \
   --etherscan-api-key "$BASESCAN_API_KEY"
 ```
 
+## PauseController (`src/PauseController.sol`)
+
+Emergency pause: only the configured **policy registry** address (your deployed `DefenseProtocol`) may `activate`; **governance** (deployer) may `deactivate`. Pair with `DEFENSE_PROTOCOL_ADDRESS` and `PAUSE_CONTROLLER_ADDRESS` in `.env`.
+
 ## DefenseProtocol (`src/DefenseProtocol.sol`)
 
 Defense policy and **defense updates** (`publishDefenseUpdate` / `updatePolicy`) with ZK verifier hooks. Deploy with two verifier addresses (policy + learning); record `DEFENSE_PROTOCOL_ADDRESS` in `.env` when wired to the app.
