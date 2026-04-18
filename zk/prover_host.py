@@ -8,12 +8,25 @@ import logging
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
+from .proof_cache import cache_key, get_cached, set_cached
+
 logger = logging.getLogger(__name__)
 
 
 def _fake_proof(public_inputs: list[str]) -> dict:
     h = hashlib.sha256(json.dumps(public_inputs).encode()).hexdigest()
     return {"proof": f"0x{h}", "publicSignals": public_inputs}
+
+
+def prove_with_cache(public_inputs: list[str]) -> dict:
+    """Return deterministic fake proof, using in-process cache when inputs repeat."""
+    key = cache_key(public_inputs)
+    hit = get_cached(key)
+    if hit is not None:
+        return hit
+    out = _fake_proof(public_inputs)
+    set_cached(key, out)
+    return out
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -26,7 +39,7 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             data = json.loads(body.decode())
             pub = data.get("publicInputs", [])
-            out = _fake_proof(pub)
+            out = prove_with_cache(pub)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()

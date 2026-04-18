@@ -32,8 +32,8 @@ build-backend = "setuptools.build_meta"
 # Only ship the `skill` package; the repo has other top-level dirs that must not be installed.
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["skill*", "learning*", "network*"]
+include = ["skill*", "learning*", "network*", "zk*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["skill/tests", "learning/tests", "network/tests", "tests/contracts", "tests/performance"]
+testpaths = ["skill/tests", "learning/tests", "network/tests", "tests/contracts", "tests/performance", "zk/tests"]
