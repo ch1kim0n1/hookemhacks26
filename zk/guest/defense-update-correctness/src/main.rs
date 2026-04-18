@@ -1,13 +1,16 @@
-//! LearningLoopCorrectness guest program (RISC Zero zkVM).
+//! DefenseUpdateCorrectness guest program (RISC Zero zkVM).
 //!
-//! Proves: "the new policy was earned by adversarial co-evolution —
-//! across ≥ min_generations rounds, the candidate policy defended
+//! Proves: "the new defense bundle was earned by adversarial
+//! co-evolution against the attack identified by `derivedFromAttackHash`
+//! — across ≥ min_generations rounds, the candidate bundle defended
 //! committed attacks at an aggregate win-rate ≥ min_win_rate_bp."
 //!
 //! Journal layout (128 bytes, see
 //! `sentinel_zk_shared::learning_journal`):
-//!   oldPolicyHash || newPolicyHash || winRateBp (uint256 BE)
-//!   || generationCount (uint256 BE)
+//!   oldPolicyHash || newPolicyHash || derivedFromAttackHash || modelDeltaHash
+//!
+//! These four slots are exactly the `publicInputs` consumed by
+//! `DefenseProtocol.publishDefenseUpdate`.
 
 use risc0_zkvm::guest::env;
 use sentinel_zk_shared::{learning_journal, LearningInputs};
@@ -18,6 +21,10 @@ fn main() {
     assert_ne!(
         inputs.old_policy_hash, inputs.new_policy_hash,
         "policy unchanged"
+    );
+    assert_ne!(
+        inputs.derived_from_attack_hash, [0u8; 32],
+        "attack hash must be non-zero"
     );
 
     let gen_count = inputs.generations.len() as u32;
@@ -41,17 +48,16 @@ fn main() {
         "win rate below floor"
     );
 
-    // event_batch_root is accepted as a private binding; the on-chain
-    // consumer can cross-check it by recomputing the batch root and
-    // including it in a wrapping commitment. Kept as private input here
-    // to keep the journal compact.
+    // event_batch_root is a private binding; the on-chain consumer can
+    // cross-check it by recomputing the batch root and wrapping it in an
+    // outer commitment. Kept private to keep the journal compact.
     let _ = inputs.event_batch_root;
 
     let journal = learning_journal(
         &inputs.old_policy_hash,
         &inputs.new_policy_hash,
-        win_rate_bp,
-        gen_count,
+        &inputs.derived_from_attack_hash,
+        &inputs.model_delta_hash,
     );
     env::commit_slice(&journal);
 }

@@ -6,7 +6,7 @@
 //!            "imageId": "0x...", "elapsedMs": N,
 //!            "circuit": "defense-update-correctness" }
 //!
-//! publicInputs order: [oldPolicyHash, newPolicyHash, winRateBp, generationCount].
+//! publicInputs order: [oldPolicyHash, newPolicyHash, derivedFromAttackHash, modelDeltaHash].
 
 use anyhow::{Context, Result};
 use clawguard_zk_host::prove_defense_update;

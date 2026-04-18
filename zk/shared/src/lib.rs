@@ -133,11 +133,23 @@ pub struct LearningGeneration {
     pub defended_count: u32,
 }
 
+/// Guest inputs for the defense-update-correctness circuit.
+///
+/// The guest validates adversarial co-evolution (generations ≥ min,
+/// aggregate win-rate ≥ min_win_rate_bp) as private witness but commits
+/// the cross-system binding fields to the journal:
+/// `(oldPolicyHash, newPolicyHash, derivedFromAttackHash, modelDeltaHash)`.
+/// These are the exact four `publicInputs` that
+/// `DefenseProtocol.publishDefenseUpdate` verifies.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LearningInputs {
     pub old_policy_hash: [u8; 32],
     pub new_policy_hash: [u8; 32],
-    /// Minimum defended/attacked ratio in basis points.
+    /// Scan-attestation journal hash that motivated this defense update.
+    pub derived_from_attack_hash: [u8; 32],
+    /// Commit of the MLP weight delta (sha256 of the canonical delta).
+    pub model_delta_hash: [u8; 32],
+    /// Minimum defended/attacked ratio in basis points (private witness).
     pub min_win_rate_bp: u16,
     pub min_generations: u32,
     pub event_batch_root: [u8; 32],
@@ -145,22 +157,20 @@ pub struct LearningInputs {
 }
 
 /// Journal layout (128 bytes):
-///   oldPolicyHash || newPolicyHash || winRateBp (uint256 BE) || generationCount (uint256 BE)
+///   oldPolicyHash || newPolicyHash || derivedFromAttackHash || modelDeltaHash
 pub const LEARNING_JOURNAL_LEN: usize = 128;
 
 pub fn learning_journal(
     old_policy_hash: &[u8; 32],
     new_policy_hash: &[u8; 32],
-    win_rate_bp: u16,
-    generation_count: u32,
+    derived_from_attack_hash: &[u8; 32],
+    model_delta_hash: &[u8; 32],
 ) -> [u8; LEARNING_JOURNAL_LEN] {
     let mut out = [0u8; LEARNING_JOURNAL_LEN];
     out[0..32].copy_from_slice(old_policy_hash);
     out[32..64].copy_from_slice(new_policy_hash);
-    // uint256 big-endian: top 30 bytes zero, low 2 bytes = win_rate_bp.
-    out[64 + 30..64 + 32].copy_from_slice(&win_rate_bp.to_be_bytes());
-    // uint256 big-endian: top 28 bytes zero, low 4 bytes = generation_count.
-    out[96 + 28..96 + 32].copy_from_slice(&generation_count.to_be_bytes());
+    out[64..96].copy_from_slice(derived_from_attack_hash);
+    out[96..128].copy_from_slice(model_delta_hash);
     out
 }
 
@@ -208,35 +218,32 @@ mod tests {
     fn learning_journal_layout_matches_abi() {
         let old = [0x10u8; 32];
         let new = [0x11u8; 32];
-        let j = learning_journal(&old, &new, 0x1234, 0x0ABCDEF0);
+        let attack = [0x22u8; 32];
+        let model_delta = [0x33u8; 32];
+        let j = learning_journal(&old, &new, &attack, &model_delta);
 
         assert_eq!(j.len(), LEARNING_JOURNAL_LEN);
         assert_eq!(&j[0..32], &old);
         assert_eq!(&j[32..64], &new);
-        // win_rate_bp is uint256 big-endian: top 30 bytes zero, low 2 = 0x12 0x34.
-        assert!(j[64..94].iter().all(|&b| b == 0));
-        assert_eq!(j[94], 0x12);
-        assert_eq!(j[95], 0x34);
-        // generation_count is uint256 big-endian: top 28 bytes zero, low 4.
-        assert!(j[96..124].iter().all(|&b| b == 0));
-        assert_eq!(&j[124..128], &[0x0A, 0xBC, 0xDE, 0xF0]);
+        assert_eq!(&j[64..96], &attack);
+        assert_eq!(&j[96..128], &model_delta);
     }
 
     #[test]
-    fn learning_journal_win_rate_bounds() {
-        // Max basis points (10000 = 0x2710) and zero both round-trip.
-        let j0 = learning_journal(&[0u8; 32], &[0u8; 32], 0, 0);
-        assert!(j0[64..96].iter().all(|&b| b == 0));
-
-        let jmax = learning_journal(&[0u8; 32], &[0u8; 32], 10000, 0);
-        assert_eq!(jmax[94], 0x27);
-        assert_eq!(jmax[95], 0x10);
-    }
-
-    #[test]
-    fn learning_journal_generation_count_fits_uint32_max() {
-        let j = learning_journal(&[0u8; 32], &[0u8; 32], 0, u32::MAX);
-        assert_eq!(&j[124..128], &[0xFF, 0xFF, 0xFF, 0xFF]);
+    fn learning_journal_slots_are_independent() {
+        let zero = [0u8; 32];
+        let one = [1u8; 32];
+        let a = learning_journal(&one, &zero, &zero, &zero);
+        let b = learning_journal(&zero, &one, &zero, &zero);
+        let c = learning_journal(&zero, &zero, &one, &zero);
+        let d = learning_journal(&zero, &zero, &zero, &one);
+        assert_ne!(a, b);
+        assert_ne!(b, c);
+        assert_ne!(c, d);
+        assert_ne!(a, d);
+        // Non-active slots stay zero.
+        assert!(a[32..].iter().all(|&x| x == 0));
+        assert!(d[..96].iter().all(|&x| x == 0));
     }
 
     // ---------------- Serde round-trips ----------------
