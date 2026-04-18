@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Data
+*.db
+*.sqlite
+
+# Secrets
+.env
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/lib/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
