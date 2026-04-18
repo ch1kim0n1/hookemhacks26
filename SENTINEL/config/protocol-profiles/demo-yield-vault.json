@@ -1,0 +1,16 @@
+{
+    "protocolName": "DemoYieldVault",
+    "addressKey": "DemoYieldVault",
+    "trackedAddresses": [
+        { "addressKey": "DemoYieldVault", "label": "vault.totalAssets", "tokenKey": "WETH" },
+        { "addressKey": "DemoYieldVault", "label": "vault.totalShares", "tokenKey": "USDC" },
+        { "addressKey": "OraclePair", "label": "oracle.wethReserve", "tokenKey": "WETH" }
+    ],
+    "attackerReplay": {
+        "attackerAddressKey": "FlashLoanAttacker",
+        "callerKey": "FlashLoanAttackerOwner",
+        "method": "attack(address,uint256)",
+        "argTypes": ["address", "uint256"],
+        "args": [{ "fromKey": "FlashLoanProvider" }, { "literalHex": "0xde0b6b3a7640000" }]
+    }
+}

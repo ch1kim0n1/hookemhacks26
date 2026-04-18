@@ -1,0 +1,12 @@
+{
+    "chainId": 11155111,
+    "rpcUrl": "https://rpc.sepolia.org",
+    "wsUrl": "wss://ws.sepolia.org",
+    "addresses": {
+        "PolicyRegistry": "0x0000000000000000000000000000000000000000",
+        "PauseController": "0x0000000000000000000000000000000000000000",
+        "ThreatRegistry": "0x0000000000000000000000000000000000000000",
+        "SentinelGuard": "0x0000000000000000000000000000000000000000"
+    },
+    "_note": "Deploy contracts to Sepolia and fill in addresses. Copy to addresses.sepolia.json (without .example)"
+}

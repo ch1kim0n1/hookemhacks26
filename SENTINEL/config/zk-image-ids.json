@@ -1,0 +1,6 @@
+{
+    "PolicyCompliance": "0xa9f05c04e2d6297d041947fb757f692f6bc0b1489b7b8d4bd2190c3ad1d4a81d",
+    "CounterfactualCorrectness": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "LearningLoopCorrectness": "0x0202020202020202020202020202020202020202020202020202020202020202",
+    "_note": "PolicyCompliance: pinned from dump_image_ids. CounterfactualCorrectness + LearningLoopCorrectness: dev-mode placeholders (non-zero so verifier constructors accept them; RiscZeroMockVerifier ignores imageId). Replace with real IDs after `cargo run --bin dump_image_ids` before RISC0_DEV_MODE=0 deployment."
+}

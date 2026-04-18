@@ -1,0 +1,8 @@
+{
+    "schema": "DefenseMinedEvent@1",
+    "eventId": "evt_01HW4RQYT1ZPQ3XJ9B7MNAA002",
+    "txHash": "0xdef000000000000000000000000000000000000000000000000000000000cafe",
+    "blockNumber": 19824712,
+    "status": 2,
+    "proofDigest": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}

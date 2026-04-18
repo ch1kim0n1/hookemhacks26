@@ -1,0 +1,43 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "api-gateway"
+    static_configs:
+      - targets: ["api-gateway:8080"]
+    metrics_path: "/metrics"
+
+  - job_name: "mempool-monitor"
+    static_configs:
+      - targets: ["mempool-monitor:9001"]
+    metrics_path: "/metrics"
+
+  - job_name: "counterfactual-sim"
+    static_configs:
+      - targets: ["counterfactual-sim:9002"]
+    metrics_path: "/metrics"
+
+  - job_name: "detection-engine"
+    static_configs:
+      - targets: ["detection-engine:9003"]
+    metrics_path: "/metrics"
+
+  - job_name: "defense-agent"
+    static_configs:
+      - targets: ["defense-agent:9004"]
+    metrics_path: "/metrics"
+
+  - job_name: "zk-prover"
+    static_configs:
+      - targets: ["zk-prover:9100"]
+    metrics_path: "/metrics"
+
+  - job_name: "learning-loop"
+    static_configs:
+      - targets: ["learning-loop:9005"]
+    metrics_path: "/metrics"
+
+  - job_name: "preemptive-strike"
+    static_configs:
+      - targets: ["preemptive-strike:9006"]

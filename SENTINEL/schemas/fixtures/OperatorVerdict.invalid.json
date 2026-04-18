@@ -1,0 +1,13 @@
+{
+    "schema": "OperatorVerdict@1",
+    "operatorId": "alpha",
+    "modelHash": "not-a-hex-hash",
+    "address": "0xabcdef1234567890abcdef1234567890abcdef12",
+    "state": "UNKNOWN_STATE",
+    "level": "confirmed",
+    "confidence": 99999,
+    "anomalyScore": 2.5,
+    "sequenceScore": 0.9,
+    "triggeringTxHash": "0x0",
+    "pattern": "flash_loan_oracle"
+}

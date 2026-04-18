@@ -1,0 +1,9 @@
+/Users/pomoika/Documents/GitHub_repo/hookemhacks26-precode/zk/target/riscv-guest/sentinel-zk-host/learning-correctness/riscv32im-risc0-zkvm-elf/release/deps/risc0_groth16-54819859f97fa65a.d: /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/lib.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/types.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/verifier.rs
+
+/Users/pomoika/Documents/GitHub_repo/hookemhacks26-precode/zk/target/riscv-guest/sentinel-zk-host/learning-correctness/riscv32im-risc0-zkvm-elf/release/deps/librisc0_groth16-54819859f97fa65a.rlib: /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/lib.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/types.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/verifier.rs
+
+/Users/pomoika/Documents/GitHub_repo/hookemhacks26-precode/zk/target/riscv-guest/sentinel-zk-host/learning-correctness/riscv32im-risc0-zkvm-elf/release/deps/librisc0_groth16-54819859f97fa65a.rmeta: /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/lib.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/types.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/verifier.rs
+
+/Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/lib.rs:
+/Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/types.rs:
+/Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-groth16-3.0.4/src/verifier.rs:

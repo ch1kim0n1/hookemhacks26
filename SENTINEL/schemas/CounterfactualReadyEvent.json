@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "CounterfactualReadyEvent",
+    "type": "object",
+    "required": ["schema", "emittedAt", "eventId", "deltaWei", "counterfactualRoot", "leaves", "forkBlock"],
+    "properties": {
+        "schema": { "const": "CounterfactualReadyEvent@1" },
+        "emittedAt": { "type": "string", "format": "date-time" },
+        "eventId": { "type": "string" },
+        "deltaWei": { "type": "string" },
+        "counterfactualRoot": { "type": "string" },
+        "leaves": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "address": { "type": "string" },
+                    "label": { "type": "string" },
+                    "token": { "type": "string" },
+                    "realBalanceWei": { "type": "string" },
+                    "shadowBalanceWei": { "type": "string" },
+                    "deltaWei": { "type": "string" }
+                }
+            }
+        },
+        "forkBlock": { "type": "number" }
+    }
+}

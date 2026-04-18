@@ -1,0 +1,46 @@
+{
+    "version": 1,
+    "rules": [
+        {
+            "pattern": "FLASH_LOAN_ORACLE_MANIP",
+            "min_confidence": 8500,
+            "authorized_selectors": [[233, 46, 204, 243]]
+        }
+    ],
+    "classifier": {
+        "feature_names": [
+            "flash_loan_size_bp",
+            "oracle_deviation_bp",
+            "pool_depth_impact_bp",
+            "selector_entropy_bp",
+            "cross_pool_hops_bp"
+        ],
+        "weights": [2, 3, 1, 1, 4],
+        "bias": -40000,
+        "threshold": 0
+    },
+    "mlp": {
+        "feature_names": [
+            "flash_loan_size_bp",
+            "oracle_deviation_bp",
+            "pool_depth_impact_bp",
+            "selector_entropy_bp",
+            "cross_pool_hops_bp"
+        ],
+        "hidden": {
+            "weights": [
+                [56182, 35962, 44478, 42306, -16816],
+                [22022, 9384, -16234, -24635, 1432],
+                [34377, 49474, 49545, 50877, -11426],
+                [19315, -9651, -1796, -39294, -15238]
+            ],
+            "biases": [-46954, 0, -47533, 0]
+        },
+        "output": {
+            "weights": [[66114, 328, 67223, 1820]],
+            "biases": [-153655]
+        },
+        "threshold": 0,
+        "shift_bits": 14
+    }
+}

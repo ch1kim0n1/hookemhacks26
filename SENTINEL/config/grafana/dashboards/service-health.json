@@ -1,0 +1,250 @@
+{
+    "annotations": { "list": [] },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "type": "stat",
+            "title": "api-gateway up",
+            "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"api-gateway\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "background"
+            }
+        },
+        {
+            "type": "stat",
+            "title": "mempool-monitor up",
+            "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"mempool-monitor\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "background"
+            }
+        },
+        {
+            "type": "stat",
+            "title": "counterfactual-sim up",
+            "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"counterfactual-sim\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "background"
+            }
+        },
+        {
+            "type": "stat",
+            "title": "detection-engine up",
+            "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"detection-engine\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "background"
+            }
+        },
+        {
+            "type": "stat",
+            "title": "defense-agent up",
+            "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"defense-agent\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "background"
+            }
+        },
+        {
+            "type": "stat",
+            "title": "zk-prover up",
+            "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"zk-prover\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "background"
+            }
+        },
+        {
+            "type": "timeseries",
+            "title": "Process Uptime (seconds)",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "process_uptime_seconds",
+                    "legendFormat": "{{job}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "unit": "s"
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "type": "timeseries",
+            "title": "Heap Used (bytes)",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "nodejs_heap_size_used_bytes",
+                    "legendFormat": "{{job}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "unit": "bytes"
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "type": "timeseries",
+            "title": "Event Loop Lag (seconds)",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "nodejs_eventloop_lag_seconds",
+                    "legendFormat": "{{job}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "unit": "s"
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        }
+    ],
+    "schemaVersion": 39,
+    "tags": ["sentinel"],
+    "templating": { "list": [] },
+    "time": { "from": "now-15m", "to": "now" },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Service Health",
+    "uid": "sentinel-service-health",
+    "version": 1
+}

@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "LedgerRecordedEvent",
+    "type": "object",
+    "required": ["schema", "eventId", "txHash", "blockNumber", "deltaWei", "counterfactualRoot", "proofDigest"],
+    "properties": {
+        "schema": { "const": "LedgerRecordedEvent@1" },
+        "eventId": { "type": "string" },
+        "txHash": { "type": "string" },
+        "blockNumber": { "type": "number" },
+        "deltaWei": { "type": "string" },
+        "counterfactualRoot": { "type": "string" },
+        "proofDigest": { "type": "string" }
+    }
+}

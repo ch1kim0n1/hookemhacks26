@@ -1,0 +1,7 @@
+{
+    "policy-compliance": "0xa9f05c04e2d6297d041947fb757f692f6bc0b1489b7b8d4bd2190c3ad1d4a81d",
+    "counterfactual-correctness": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "learning-correctness": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "note": "policy-compliance: pinned guest image ID from scripts/prove-policy.sh. counterfactual-correctness and learning-correctness: placeholder zeros until guest crates are built and `cargo risczero build` emits real IDs; replace before mainnet.",
+    "demoScenarioA": "Use policy-compliance image ID for live demo; zk-prover falls back to RISC0_DEV_MODE when binaries are absent."
+}

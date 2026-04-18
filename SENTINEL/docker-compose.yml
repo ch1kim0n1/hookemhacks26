@@ -1,0 +1,548 @@
+version: "3.9"
+
+# SENTINEL v2 — full local stack (all app services build from Dockerfiles
+# in-repo; health checks hit each service /health or gateway /api/v1/health).
+
+networks:
+  sentinel-net:
+    driver: bridge
+
+services:
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    command: >
+      anvil
+      --host 0.0.0.0
+      --block-time 2
+      --chain-id 31337
+      --gas-limit 30000000
+      --accounts 10
+      --steps-tracing
+      --no-storage-caching
+      --mnemonic "test test test test test test test test test test test junk"
+    ports: ["8545:8545"]
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8545 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --appendfsync everysec
+    ports: ["6379:6379"]
+    networks: [sentinel-net]
+    restart: on-failure:5
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      POSTGRES_URL: postgresql://sentinel:sentinel@postgres:5432/sentinel
+      ADDRESSES_FILE: /config/addresses.local.json
+      SENTINEL_JWT_SECRET: ${SENTINEL_JWT_SECRET:-sentinel-dev-secret-change-me}
+      SENTINEL_ADMIN_PASSWORD: ${SENTINEL_ADMIN_PASSWORD:-sentinel-admin}
+      SENTINEL_DEMO_TOKEN: ${SENTINEL_DEMO_TOKEN:-sentinel-demo}
+      POLICY_PATH: /config/policy.json
+    volumes:
+      - ./config:/config:ro
+    ports: ["8080:8080", "8081:8081"]
+    depends_on:
+      anvil:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  mempool-monitor:
+    build:
+      context: .
+      dockerfile: services/mempool-monitor/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      WS_URL: ws://anvil:8545
+    ports: ["9001:9001"]
+    depends_on:
+      anvil:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  counterfactual-sim:
+    build:
+      context: .
+      dockerfile: services/counterfactual-sim/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      PROFILE_FILE: /config/profiles.json
+    ports: ["9002:9002"]
+    depends_on:
+      anvil:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9002/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # Legacy single-node detection-engine (kept for back-compat + single-operator
+  # deployments). Federated stack uses detection-operator-{alpha,beta,gamma}
+  # below + federation-coordinator.
+  detection-engine:
+    build:
+      context: .
+      dockerfile: services/detection-engine/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      OPERATOR_ID: default
+    ports: ["9003:9003"]
+    depends_on:
+      anvil:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [sentinel-net]
+    profiles: [legacy]       # opt-in only — federated stack is the default
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9003/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # ── federated detection stack ──────────────────────────────────────
+  detection-operator-alpha:
+    build:
+      context: .
+      dockerfile: services/detection-engine/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      OPERATOR_ID: alpha
+      OPERATOR_SEED: 1337
+      HEALTH_PORT: 9031
+      OPERATOR_PRIVATE_KEY: ${OPERATOR_ALPHA_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+    ports: ["9031:9031"]
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      anvil: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9031/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  detection-operator-beta:
+    build:
+      context: .
+      dockerfile: services/detection-engine/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      OPERATOR_ID: beta
+      OPERATOR_SEED: 4242
+      HEALTH_PORT: 9032
+      OPERATOR_PRIVATE_KEY: ${OPERATOR_BETA_PRIVATE_KEY:-0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d}
+    ports: ["9032:9032"]
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      anvil: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9032/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  detection-operator-gamma:
+    build:
+      context: .
+      dockerfile: services/detection-engine/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      OPERATOR_ID: gamma
+      OPERATOR_SEED: 9001
+      HEALTH_PORT: 9033
+      OPERATOR_PRIVATE_KEY: ${OPERATOR_GAMMA_PRIVATE_KEY:-0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a}
+    ports: ["9033:9033"]
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      anvil: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9033/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  federation-coordinator:
+    build:
+      context: .
+      dockerfile: services/federation-coordinator/Dockerfile
+    env_file: [.env]
+    environment:
+      REDIS_URL: redis://redis:6379
+      FEDERATION_OPERATORS: alpha,beta,gamma
+      FEDERATION_THRESHOLD_K: 2
+      FEDERATION_WINDOW_SECONDS: 60
+      HEALTH_PORT: 9010
+    ports: ["9010:9010"]
+    depends_on:
+      redis: { condition: service_healthy }
+      detection-operator-alpha: { condition: service_started }
+      detection-operator-beta:  { condition: service_started }
+      detection-operator-gamma: { condition: service_started }
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9010/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  defense-agent:
+    build:
+      context: .
+      dockerfile: services/defense-agent/Dockerfile
+    env_file: [.env]
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      ZK_PROVER_URL: http://zk-prover:9100
+      POLICY_PATH: /config/policy.json
+    volumes:
+      - ./config:/config:ro
+    ports: ["9004:9004"]
+    depends_on:
+      anvil:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9004/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  learning-loop:
+    build:
+      context: .
+      dockerfile: services/learning-loop/Dockerfile
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+      POLICY_PATH: /config/policy.json
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      anvil:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [sentinel-net]
+    env_file: [.env]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9005/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  preemptive-strike:
+    build:
+      context: .
+      dockerfile: services/preemptive-strike/Dockerfile
+    environment:
+      RPC_URL: http://anvil:8545
+      REDIS_URL: redis://redis:6379
+      ADDRESSES_FILE: /config/addresses.local.json
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      anvil: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [sentinel-net]
+    env_file: [.env]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9006/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  zk-prover:
+    build:
+      context: .
+      dockerfile: services/zk-prover/Dockerfile
+    env_file: [.env]
+    environment:
+      REDIS_URL: redis://redis:6379
+      RPC_URL: http://anvil:8545
+      ADDRESSES_FILE: /config/addresses.local.json
+      PROVE_POLICY_BIN: /app/policy.bin
+      PROVE_BACKEND: ${PROVE_BACKEND:-local}
+      RISC0_DEV_MODE: ${RISC0_DEV_MODE:-1}
+      BONSAI_API_URL: ${BONSAI_API_URL:-}
+      BONSAI_API_KEY: ${BONSAI_API_KEY:-}
+    ports: ["9100:9100"]
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9100/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    env_file: [.env]
+    environment:
+      VITE_API_URL: http://localhost:8080
+      VITE_WS_URL: ws://localhost:8081/ws
+      VITE_RPC_URL: http://localhost:8545
+      VITE_DEMO_TOKEN: ${SENTINEL_DEMO_TOKEN:-sentinel-demo}
+    ports: ["3000:80"]
+    networks: [sentinel-net]
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    networks: [sentinel-net]
+    profiles: [monitoring]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3001:3000"]
+    networks: [sentinel-net]
+    profiles: [monitoring]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  caddy:
+    image: caddy:2-alpine
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - caddy-logs:/var/log/caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SENTINEL_DOMAIN: ${SENTINEL_DOMAIN:-localhost}
+      GRAFANA_DOMAIN: ${GRAFANA_DOMAIN:-grafana.localhost}
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks: [sentinel-net]
+    profiles: [production]
+    restart: unless-stopped
+
+  # --- Redis Sentinel HA (production profile) ---
+  redis-master:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis-master-data:/data
+    networks: [sentinel-net]
+    profiles: [production]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis-replica-1:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --appendfsync everysec --replicaof redis-master 6379
+    volumes:
+      - redis-replica-1-data:/data
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks: [sentinel-net]
+    profiles: [production]
+    restart: unless-stopped
+
+  redis-replica-2:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --appendfsync everysec --replicaof redis-master 6379
+    volumes:
+      - redis-replica-2-data:/data
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks: [sentinel-net]
+    profiles: [production]
+    restart: unless-stopped
+
+  redis-sentinel-1:
+    image: redis:7-alpine
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks: [sentinel-net]
+    profiles: [production]
+    restart: unless-stopped
+
+  redis-sentinel-2:
+    image: redis:7-alpine
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks: [sentinel-net]
+    profiles: [production]
+    restart: unless-stopped
+
+  redis-sentinel-3:
+    image: redis:7-alpine
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks: [sentinel-net]
+    profiles: [production]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redis-data:
+  redis-master-data:
+  redis-replica-1-data:
+  redis-replica-2-data:
+  caddy-data:
+  caddy-config:
+  caddy-logs:

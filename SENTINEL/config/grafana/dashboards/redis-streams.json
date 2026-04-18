@@ -1,0 +1,78 @@
+{
+    "annotations": { "list": [] },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "type": "text",
+            "title": "Redis Streams Metrics",
+            "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+            "options": {
+                "mode": "markdown",
+                "content": "## Redis Streams Metrics\n\nRedis Streams metrics will be populated once custom counters are added to the services.\n\nExpected metrics (using `sentinel_*` prefix):\n- `sentinel_stream_messages_published_total` — messages published per stream (labels: `stream`)\n- `sentinel_stream_messages_consumed_total` — messages consumed per stream/consumer group\n- `sentinel_stream_consumer_lag` — current consumer group lag per stream\n- `sentinel_stream_publish_errors_total` — publish error counter\n\nStreams used by SENTINEL:\n- `mempool:txs` — raw transaction feed from mempool-monitor\n- `detections:alerts` — detection alerts from detection-engine\n- `defenses:actions` — defense actions from defense-agent"
+            }
+        },
+        {
+            "type": "stat",
+            "title": "Services Using Redis",
+            "gridPos": { "h": 4, "w": 8, "x": 0, "y": 6 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "count(up{job=~\"mempool-monitor|detection-engine|defense-agent\"} == 1)",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "thresholds": {
+                        "steps": [
+                            { "color": "red", "value": null },
+                            { "color": "yellow", "value": 2 },
+                            { "color": "green", "value": 3 }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "colorMode": "background",
+                "textMode": "auto"
+            }
+        },
+        {
+            "type": "timeseries",
+            "title": "sentinel_stream_* metrics (placeholder — no data until custom counters added)",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "{__name__=~\"sentinel_stream_.*\"}",
+                    "legendFormat": "{{__name__}} {{job}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        }
+    ],
+    "schemaVersion": 39,
+    "tags": ["sentinel"],
+    "templating": { "list": [] },
+    "time": { "from": "now-15m", "to": "now" },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Redis Streams",
+    "uid": "sentinel-redis-streams",
+    "version": 1
+}

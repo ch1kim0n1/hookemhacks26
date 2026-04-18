@@ -1,0 +1,9 @@
+# https://github.com/evilmartians/lefthook
+pre-commit:
+  commands:
+    biome:
+      glob: "*.{js,ts,tsx,json}"
+      # --no-errors-on-unmatched: when the staged set is all biome-ignored
+      # paths (e.g. bench/results/*.json which biome.json excludes), don't
+      # fail the hook with "no files processed".
+      run: pnpm exec biome check --no-errors-on-unmatched {staged_files}

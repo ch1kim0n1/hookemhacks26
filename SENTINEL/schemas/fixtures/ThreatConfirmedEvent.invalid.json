@@ -1,0 +1,10 @@
+{
+    "schema": "ThreatConfirmedEvent@1",
+    "eventId": "evt_01HW4RQYT1ZPQ3XJ9B7MNAA001",
+    "confidence": -10,
+    "pattern": "flash_loan_oracle",
+    "attackerAddresses": "not-an-array",
+    "victimProtocol": "0x1111111111111111111111111111111111111111",
+    "observedAtBlock": 19824711,
+    "timestamp": "2026-04-17T14:32:17.200Z"
+}

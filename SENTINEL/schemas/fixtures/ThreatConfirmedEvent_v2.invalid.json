@@ -1,0 +1,16 @@
+{
+    "schema": "ThreatConfirmedEvent@2",
+    "eventId": "evt_01HW4RQYT1ZPQ3XJ9B7MNAA002",
+    "confidence": 9333,
+    "pattern": "flash_loan_oracle",
+    "attackerAddresses": ["0xabcdef1234567890abcdef1234567890abcdef12"],
+    "victimProtocol": "0x1111111111111111111111111111111111111111",
+    "triggeringTxHashes": ["0x7f5c81b53c20e1b2a6f9b4a8f1d2e3c4b5a69788fedcba0987654321abcdef01"],
+    "observedAtBlock": 19824711,
+    "timestamp": "2026-04-17T14:32:17.500Z",
+    "federation": {
+        "consensusK": 2,
+        "consensusN": 3,
+        "operatorAttestations": []
+    }
+}

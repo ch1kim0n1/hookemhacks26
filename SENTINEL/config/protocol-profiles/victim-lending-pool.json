@@ -1,0 +1,18 @@
+{
+    "protocolName": "VictimLendingPool",
+    "addressKey": "VictimLendingPool",
+    "trackedAddresses": [
+        { "addressKey": "VictimLendingPool", "label": "victim.wethReserve", "tokenKey": "WETH" },
+        { "addressKey": "VictimLendingPool", "label": "victim.usdcCollateral", "tokenKey": "USDC" },
+        { "addressKey": "FlashLoanAttacker", "label": "attacker.wethBalance", "tokenKey": "WETH" },
+        { "addressKey": "OraclePair", "label": "oracle.wethReserve", "tokenKey": "WETH" },
+        { "addressKey": "OraclePair", "label": "oracle.usdcReserve", "tokenKey": "USDC" }
+    ],
+    "attackerReplay": {
+        "attackerAddressKey": "FlashLoanAttacker",
+        "callerKey": "FlashLoanAttackerOwner",
+        "method": "attack(address,uint256)",
+        "argTypes": ["address", "uint256"],
+        "args": [{ "fromKey": "FlashLoanProvider" }, { "literalHex": "0x30ca024f987b900000" }]
+    }
+}

@@ -1,0 +1,4 @@
+{
+    "description": "Phase 1 placeholder. Phase 2 engineer 2 populates with attack-pattern function selectors used by the detection engine (e.g., flash loan, price-impact, reentrancy).",
+    "selectors": {}
+}

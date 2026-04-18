@@ -1,0 +1,114 @@
+{
+  "aggregate": {
+    "total_attacks": 8,
+    "caught": 8,
+    "catch_rate": 1.0,
+    "loss_total_usd_m": 320.695,
+    "loss_would_have_blocked_usd_m": 320.695,
+    "loss_blocked_pct": 1.0,
+    "exploit_tx_latency_ms": {
+      "min": 2.2793750031269155,
+      "p50": 2.4037080038397107,
+      "p95": 2.623792002850678,
+      "max": 2.623792002850678,
+      "mean": 2.409776002423314
+    },
+    "end_to_end_latency_ms": {
+      "min": 9.106875004363246,
+      "p50": 9.666333502536872,
+      "p95": 10.543541997321881,
+      "max": 10.543541997321881,
+      "mean": 9.693036501630559
+    }
+  },
+  "benign": {
+    "n": 500,
+    "false_positives": 0,
+    "fp_rate": 0.0,
+    "elapsed_ms": 1298.194416995102,
+    "ms_per_tx": 2.596388833990204
+  },
+  "per_attack": [
+    {
+      "attack_name": "bZx #1 (ETH/sUSD)",
+      "loss_usd_millions": 0.35,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 10.543541997321881,
+      "latency_ms_exploit_tx": 2.4394590000156313,
+      "observations": 3
+    },
+    {
+      "attack_name": "bZx #2 (sUSD/ETH)",
+      "loss_usd_millions": 0.645,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 10.034167004050687,
+      "latency_ms_exploit_tx": 2.4236250028479844,
+      "observations": 3
+    },
+    {
+      "attack_name": "Harvest Finance",
+      "loss_usd_millions": 24.0,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 9.106875004363246,
+      "latency_ms_exploit_tx": 2.2793750031269155,
+      "observations": 3
+    },
+    {
+      "attack_name": "Value DeFi",
+      "loss_usd_millions": 6.0,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 9.741750000102911,
+      "latency_ms_exploit_tx": 2.383791004831437,
+      "observations": 3
+    },
+    {
+      "attack_name": "Warp Finance",
+      "loss_usd_millions": 7.7,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 9.590917004970834,
+      "latency_ms_exploit_tx": 2.623792002850678,
+      "observations": 3
+    },
+    {
+      "attack_name": "Vee Finance",
+      "loss_usd_millions": 35.0,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 9.515750003629364,
+      "latency_ms_exploit_tx": 2.3786250021657906,
+      "observations": 3
+    },
+    {
+      "attack_name": "Cream Finance (yUSD)",
+      "loss_usd_millions": 130.0,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 9.859582998615224,
+      "latency_ms_exploit_tx": 2.4417079985141754,
+      "observations": 3
+    },
+    {
+      "attack_name": "Mango Markets",
+      "loss_usd_millions": 117.0,
+      "caught": true,
+      "confidence_bp": 10000,
+      "level": "confirmed",
+      "latency_ms_flash_to_verdict": 9.151707999990322,
+      "latency_ms_exploit_tx": 2.307833005033899,
+      "observations": 3
+    }
+  ],
+  "elapsed_seconds": 4.236163875000784
+}

@@ -1,0 +1,502 @@
+{
+    "description": "Pre-recorded Red/Blue adversarial loop. Drives <BattlefieldViz>. 60 ticks @ 500ms apart = 30s loop.",
+    "tickIntervalMs": 500,
+    "ticks": [
+        {
+            "generation": 1,
+            "attempt": { "redStrategy": "oracle-manip-v1", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.12,
+            "logLine": "Gen 1: Red landed oracle manipulation. Blue had no counter."
+        },
+        {
+            "generation": 2,
+            "attempt": { "redStrategy": "oracle-manip-v1", "outcome": "blocked", "blueCounter": "twap-guard" },
+            "winRate": 0.18,
+            "logLine": "Gen 2: Blue added TWAP guard. Oracle manip blocked."
+        },
+        {
+            "generation": 3,
+            "attempt": { "redStrategy": "flash-loan-drain", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.21,
+            "logLine": "Gen 3: Red routed via flash loan. Blue unprepared."
+        },
+        {
+            "generation": 4,
+            "attempt": {
+                "redStrategy": "flash-loan-drain",
+                "outcome": "partial",
+                "blueCounter": "mempool-preintercept"
+            },
+            "winRate": 0.29,
+            "logLine": "Gen 4: Blue intercepts in mempool. Partial block."
+        },
+        {
+            "generation": 5,
+            "attempt": {
+                "redStrategy": "flash-loan-drain",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v2"
+            },
+            "winRate": 0.35,
+            "logLine": "Gen 5: Full block. Defense latency < 200ms."
+        },
+        {
+            "generation": 6,
+            "attempt": { "redStrategy": "reentrancy-chain", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.33,
+            "logLine": "Gen 6: Red pivoted to reentrancy chain. Landed."
+        },
+        {
+            "generation": 7,
+            "attempt": {
+                "redStrategy": "reentrancy-chain",
+                "outcome": "partial",
+                "blueCounter": "nonreentrant-modifier"
+            },
+            "winRate": 0.39,
+            "logLine": "Gen 7: Blue adds guard. Partial stop."
+        },
+        {
+            "generation": 8,
+            "attempt": {
+                "redStrategy": "reentrancy-chain",
+                "outcome": "blocked",
+                "blueCounter": "nonreentrant-modifier"
+            },
+            "winRate": 0.44,
+            "logLine": "Gen 8: Clean block."
+        },
+        {
+            "generation": 9,
+            "attempt": { "redStrategy": "oracle-manip-v2-twap", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.42,
+            "logLine": "Gen 9: Red found TWAP-aware manip. Landed."
+        },
+        {
+            "generation": 10,
+            "attempt": {
+                "redStrategy": "oracle-manip-v2-twap",
+                "outcome": "partial",
+                "blueCounter": "multi-oracle-quorum"
+            },
+            "winRate": 0.49,
+            "logLine": "Gen 10: Blue introduces quorum oracle."
+        },
+        {
+            "generation": 11,
+            "attempt": {
+                "redStrategy": "oracle-manip-v2-twap",
+                "outcome": "blocked",
+                "blueCounter": "multi-oracle-quorum"
+            },
+            "winRate": 0.54,
+            "logLine": "Gen 11: Quorum holds."
+        },
+        {
+            "generation": 12,
+            "attempt": { "redStrategy": "governance-accum", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.52,
+            "logLine": "Gen 12: Red shifts domains — governance accumulation."
+        },
+        {
+            "generation": 13,
+            "attempt": {
+                "redStrategy": "governance-accum",
+                "outcome": "blocked",
+                "blueCounter": "rate-limit-primitive"
+            },
+            "winRate": 0.59,
+            "logLine": "Gen 13: Blue activates RateLimit primitive."
+        },
+        {
+            "generation": 14,
+            "attempt": {
+                "redStrategy": "liquidity-drain-cluster",
+                "outcome": "partial",
+                "blueCounter": "quarantine-vault"
+            },
+            "winRate": 0.63,
+            "logLine": "Gen 14: Partial — Blue quarantines mid-flight."
+        },
+        {
+            "generation": 15,
+            "attempt": {
+                "redStrategy": "liquidity-drain-cluster",
+                "outcome": "blocked",
+                "blueCounter": "quarantine-vault"
+            },
+            "winRate": 0.68,
+            "logLine": "Gen 15: Clean quarantine."
+        },
+        {
+            "generation": 16,
+            "attempt": { "redStrategy": "oracle-manip-v3-crossdex", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.65,
+            "logLine": "Gen 16: Cross-DEX flash manipulation lands."
+        },
+        {
+            "generation": 17,
+            "attempt": {
+                "redStrategy": "oracle-manip-v3-crossdex",
+                "outcome": "partial",
+                "blueCounter": "crossdex-correlation"
+            },
+            "winRate": 0.7,
+            "logLine": "Gen 17: Correlation guard deployed."
+        },
+        {
+            "generation": 18,
+            "attempt": {
+                "redStrategy": "oracle-manip-v3-crossdex",
+                "outcome": "blocked",
+                "blueCounter": "crossdex-correlation"
+            },
+            "winRate": 0.74,
+            "logLine": "Gen 18: Full block."
+        },
+        {
+            "generation": 19,
+            "attempt": {
+                "redStrategy": "sandwich-mev",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v2"
+            },
+            "winRate": 0.76,
+            "logLine": "Gen 19: Sandwich blocked pre-mine."
+        },
+        {
+            "generation": 20,
+            "attempt": {
+                "redStrategy": "sandwich-mev",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v2"
+            },
+            "winRate": 0.79,
+            "logLine": "Gen 20: Re-run, clean block."
+        },
+        {
+            "generation": 21,
+            "attempt": { "redStrategy": "multicall-drain", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.76,
+            "logLine": "Gen 21: Red stacks via multicall."
+        },
+        {
+            "generation": 22,
+            "attempt": { "redStrategy": "multicall-drain", "outcome": "partial", "blueCounter": "call-depth-limit" },
+            "winRate": 0.81,
+            "logLine": "Gen 22: Blue caps call depth."
+        },
+        {
+            "generation": 23,
+            "attempt": { "redStrategy": "multicall-drain", "outcome": "blocked", "blueCounter": "call-depth-limit" },
+            "winRate": 0.84,
+            "logLine": "Gen 23: Full block."
+        },
+        {
+            "generation": 24,
+            "attempt": { "redStrategy": "oracle-manip-v4-async", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.82,
+            "logLine": "Gen 24: Async oracle path found."
+        },
+        {
+            "generation": 25,
+            "attempt": {
+                "redStrategy": "oracle-manip-v4-async",
+                "outcome": "blocked",
+                "blueCounter": "async-settlement-hold"
+            },
+            "winRate": 0.86,
+            "logLine": "Gen 25: Blue holds settlement. Block."
+        },
+        {
+            "generation": 26,
+            "attempt": {
+                "redStrategy": "flash-loan-drain-v2",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v3"
+            },
+            "winRate": 0.87,
+            "logLine": "Gen 26: Re-attempt blocked."
+        },
+        {
+            "generation": 27,
+            "attempt": {
+                "redStrategy": "reentrancy-chain-v2",
+                "outcome": "blocked",
+                "blueCounter": "nonreentrant-modifier"
+            },
+            "winRate": 0.88,
+            "logLine": "Gen 27: Re-attempt blocked."
+        },
+        {
+            "generation": 28,
+            "attempt": {
+                "redStrategy": "governance-accum-v2",
+                "outcome": "blocked",
+                "blueCounter": "rate-limit-primitive"
+            },
+            "winRate": 0.89,
+            "logLine": "Gen 28: Rate-limit holds."
+        },
+        {
+            "generation": 29,
+            "attempt": {
+                "redStrategy": "oracle-manip-v5-hidden",
+                "outcome": "partial",
+                "blueCounter": "anomaly-scoring"
+            },
+            "winRate": 0.9,
+            "logLine": "Gen 29: Anomaly scoring trips."
+        },
+        {
+            "generation": 30,
+            "attempt": {
+                "redStrategy": "oracle-manip-v5-hidden",
+                "outcome": "blocked",
+                "blueCounter": "anomaly-scoring"
+            },
+            "winRate": 0.91,
+            "logLine": "Gen 30: Clean block."
+        },
+        {
+            "generation": 31,
+            "attempt": { "redStrategy": "meta-transaction-drain", "outcome": "succeeded", "blueCounter": null },
+            "winRate": 0.89,
+            "logLine": "Gen 31: Meta-tx drain lands."
+        },
+        {
+            "generation": 32,
+            "attempt": {
+                "redStrategy": "meta-transaction-drain",
+                "outcome": "blocked",
+                "blueCounter": "metatx-nonce-guard"
+            },
+            "winRate": 0.91,
+            "logLine": "Gen 32: Blue adds nonce guard."
+        },
+        {
+            "generation": 33,
+            "attempt": { "redStrategy": "cross-chain-replay", "outcome": "partial", "blueCounter": "chain-id-enforce" },
+            "winRate": 0.92,
+            "logLine": "Gen 33: Chain id enforced mid-replay."
+        },
+        {
+            "generation": 34,
+            "attempt": { "redStrategy": "cross-chain-replay", "outcome": "blocked", "blueCounter": "chain-id-enforce" },
+            "winRate": 0.93,
+            "logLine": "Gen 34: Clean."
+        },
+        {
+            "generation": 35,
+            "attempt": { "redStrategy": "permit-phish", "outcome": "blocked", "blueCounter": "permit-domain-guard" },
+            "winRate": 0.93,
+            "logLine": "Gen 35: Phish blocked."
+        },
+        {
+            "generation": 36,
+            "attempt": { "redStrategy": "permit-phish", "outcome": "blocked", "blueCounter": "permit-domain-guard" },
+            "winRate": 0.94,
+            "logLine": "Gen 36: Re-run clean."
+        },
+        {
+            "generation": 37,
+            "attempt": { "redStrategy": "liquidity-sniping", "outcome": "partial", "blueCounter": "launch-hold" },
+            "winRate": 0.94,
+            "logLine": "Gen 37: Launch hold trips."
+        },
+        {
+            "generation": 38,
+            "attempt": { "redStrategy": "liquidity-sniping", "outcome": "blocked", "blueCounter": "launch-hold" },
+            "winRate": 0.95,
+            "logLine": "Gen 38: Clean."
+        },
+        {
+            "generation": 39,
+            "attempt": { "redStrategy": "oracle-manip-v6", "outcome": "blocked", "blueCounter": "quorum+anomaly" },
+            "winRate": 0.95,
+            "logLine": "Gen 39: Quorum + anomaly hold."
+        },
+        {
+            "generation": 40,
+            "attempt": {
+                "redStrategy": "flash-loan-drain-v3",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v3"
+            },
+            "winRate": 0.95,
+            "logLine": "Gen 40: Mempool layer holds."
+        },
+        {
+            "generation": 41,
+            "attempt": {
+                "redStrategy": "governance-accum-v3",
+                "outcome": "blocked",
+                "blueCounter": "rate-limit+policy-proof"
+            },
+            "winRate": 0.96,
+            "logLine": "Gen 41: Policy-proof guard enforces."
+        },
+        {
+            "generation": 42,
+            "attempt": {
+                "redStrategy": "oracle-manip-v7-stealth",
+                "outcome": "partial",
+                "blueCounter": "ensemble-detector"
+            },
+            "winRate": 0.96,
+            "logLine": "Gen 42: Ensemble detector partial."
+        },
+        {
+            "generation": 43,
+            "attempt": {
+                "redStrategy": "oracle-manip-v7-stealth",
+                "outcome": "blocked",
+                "blueCounter": "ensemble-detector"
+            },
+            "winRate": 0.97,
+            "logLine": "Gen 43: Clean."
+        },
+        {
+            "generation": 44,
+            "attempt": {
+                "redStrategy": "reentrancy-chain-v3",
+                "outcome": "blocked",
+                "blueCounter": "call-depth-limit"
+            },
+            "winRate": 0.97,
+            "logLine": "Gen 44: Re-attempt blocked."
+        },
+        {
+            "generation": 45,
+            "attempt": {
+                "redStrategy": "sandwich-mev-v2",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v3"
+            },
+            "winRate": 0.97,
+            "logLine": "Gen 45: Sandwich pre-intercepted."
+        },
+        {
+            "generation": 46,
+            "attempt": { "redStrategy": "multicall-drain-v2", "outcome": "blocked", "blueCounter": "call-depth-limit" },
+            "winRate": 0.97,
+            "logLine": "Gen 46: Multicall capped."
+        },
+        {
+            "generation": 47,
+            "attempt": {
+                "redStrategy": "oracle-manip-v8-adaptive",
+                "outcome": "partial",
+                "blueCounter": "adaptive-threshold"
+            },
+            "winRate": 0.98,
+            "logLine": "Gen 47: Blue adapts threshold."
+        },
+        {
+            "generation": 48,
+            "attempt": {
+                "redStrategy": "oracle-manip-v8-adaptive",
+                "outcome": "blocked",
+                "blueCounter": "adaptive-threshold"
+            },
+            "winRate": 0.98,
+            "logLine": "Gen 48: Clean."
+        },
+        {
+            "generation": 49,
+            "attempt": { "redStrategy": "meta-tx-replay", "outcome": "blocked", "blueCounter": "metatx-nonce-guard" },
+            "winRate": 0.98,
+            "logLine": "Gen 49: Replay blocked."
+        },
+        {
+            "generation": 50,
+            "attempt": { "redStrategy": "permit-phish-v2", "outcome": "blocked", "blueCounter": "permit-domain-guard" },
+            "winRate": 0.98,
+            "logLine": "Gen 50: Phish blocked."
+        },
+        {
+            "generation": 51,
+            "attempt": {
+                "redStrategy": "cross-dex-arb-exploit",
+                "outcome": "partial",
+                "blueCounter": "crossdex-correlation"
+            },
+            "winRate": 0.98,
+            "logLine": "Gen 51: Correlation trips."
+        },
+        {
+            "generation": 52,
+            "attempt": {
+                "redStrategy": "cross-dex-arb-exploit",
+                "outcome": "blocked",
+                "blueCounter": "crossdex-correlation"
+            },
+            "winRate": 0.98,
+            "logLine": "Gen 52: Clean."
+        },
+        {
+            "generation": 53,
+            "attempt": {
+                "redStrategy": "flash-loan-drain-v4",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v3"
+            },
+            "winRate": 0.98,
+            "logLine": "Gen 53: Pre-intercept holds."
+        },
+        {
+            "generation": 54,
+            "attempt": { "redStrategy": "oracle-manip-v9", "outcome": "blocked", "blueCounter": "ensemble-detector" },
+            "winRate": 0.99,
+            "logLine": "Gen 54: Ensemble holds."
+        },
+        {
+            "generation": 55,
+            "attempt": {
+                "redStrategy": "reentrancy-chain-v4",
+                "outcome": "blocked",
+                "blueCounter": "nonreentrant-modifier"
+            },
+            "winRate": 0.99,
+            "logLine": "Gen 55: Clean block."
+        },
+        {
+            "generation": 56,
+            "attempt": {
+                "redStrategy": "governance-accum-v4",
+                "outcome": "blocked",
+                "blueCounter": "rate-limit+policy-proof"
+            },
+            "winRate": 0.99,
+            "logLine": "Gen 56: Policy-proof guard."
+        },
+        {
+            "generation": 57,
+            "attempt": {
+                "redStrategy": "sandwich-mev-v3",
+                "outcome": "blocked",
+                "blueCounter": "mempool-preintercept-v3"
+            },
+            "winRate": 0.99,
+            "logLine": "Gen 57: Sandwich blocked."
+        },
+        {
+            "generation": 58,
+            "attempt": { "redStrategy": "multicall-drain-v3", "outcome": "blocked", "blueCounter": "call-depth-limit" },
+            "winRate": 0.99,
+            "logLine": "Gen 58: Multicall blocked."
+        },
+        {
+            "generation": 59,
+            "attempt": { "redStrategy": "oracle-manip-v10", "outcome": "blocked", "blueCounter": "ensemble+adaptive" },
+            "winRate": 0.99,
+            "logLine": "Gen 59: Ensemble + adaptive hold."
+        },
+        {
+            "generation": 60,
+            "attempt": { "redStrategy": "novel-composite", "outcome": "blocked", "blueCounter": "policy-proof-quorum" },
+            "winRate": 0.99,
+            "logLine": "Gen 60: Policy-proof quorum holds. Loop restarts."
+        }
+    ]
+}

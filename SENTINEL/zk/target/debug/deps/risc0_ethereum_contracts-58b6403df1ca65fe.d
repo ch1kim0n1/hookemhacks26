@@ -1,0 +1,8 @@
+/Users/pomoika/Documents/GitHub_repo/hookemhacks26/zk/target/debug/deps/risc0_ethereum_contracts-58b6403df1ca65fe.d: /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/lib.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/groth16.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/IRiscZeroVerifier.sol /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/IRiscZeroSetVerifier.sol
+
+/Users/pomoika/Documents/GitHub_repo/hookemhacks26/zk/target/debug/deps/librisc0_ethereum_contracts-58b6403df1ca65fe.rmeta: /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/lib.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/groth16.rs /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/IRiscZeroVerifier.sol /Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/IRiscZeroSetVerifier.sol
+
+/Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/lib.rs:
+/Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/groth16.rs:
+/Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/IRiscZeroVerifier.sol:
+/Users/pomoika/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/risc0-ethereum-contracts-3.0.1/src/IRiscZeroSetVerifier.sol:

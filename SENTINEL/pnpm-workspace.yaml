@@ -1,0 +1,10 @@
+packages:
+  - "packages/sentinel-logger"
+  - "services/mempool-monitor"
+  - "services/counterfactual-sim"
+  - "services/api-gateway"
+  - "services/zk-prover"
+  - "services/learning-loop"
+  - "services/preemptive-strike"
+  - "frontend"
+  - "packages/stream-client"

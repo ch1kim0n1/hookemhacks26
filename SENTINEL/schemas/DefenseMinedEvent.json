@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "DefenseMinedEvent",
+    "type": "object",
+    "required": ["schema", "eventId", "txHash", "blockNumber", "status", "proofDigest"],
+    "properties": {
+        "schema": { "const": "DefenseMinedEvent@1" },
+        "eventId": { "type": "string" },
+        "txHash": { "type": "string" },
+        "blockNumber": { "type": "number" },
+        "status": { "type": "number", "enum": [0, 1] },
+        "proofDigest": { "type": "string" }
+    }
+}

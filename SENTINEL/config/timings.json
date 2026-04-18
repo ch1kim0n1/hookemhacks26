@@ -1,0 +1,53 @@
+{
+    "description": "Demo choreography timings (ms). Source of truth for <DemoOrchestrator> and SLA assertions in scripts/demo-smoke-test.sh.",
+    "blockTimeSeconds": 2,
+    "detection": {
+        "candidateConfidenceFloor": 0.6,
+        "confirmedConfidenceFloor": 0.85,
+        "windowSeconds": 30
+    },
+    "proof": {
+        "timeoutMs": 10000,
+        "cacheEnabled": true
+    },
+    "defense": {
+        "responseBudgetMs": 5000,
+        "cooldownMs": 500
+    },
+    "demo": {
+        "scenarioADelayMs": 5000,
+        "scenarioBDelayMs": 3000,
+        "scenarioA": {
+            "attackBegin": 0,
+            "defenseTrigger": 2000,
+            "timelineDiverge": 3000,
+            "counterfactualReveal": 5000,
+            "ledgerCommit": 8000,
+            "immunityPropagate": 12000
+        },
+        "scenarioB": {
+            "instructionInjected": 0,
+            "agentConstructing": 500,
+            "proofRequested": 1200,
+            "proofFailed": 2500,
+            "onChainReject": 4500,
+            "close": 6500
+        }
+    },
+    "trustInterface": {
+        "ambiguityMs": 0,
+        "suspicionMs": 1500,
+        "proofMs": 3200,
+        "resolvedMs": 5000,
+        "rejectedMs": 4500
+    },
+    "demoSafeMode": {
+        "maxGraphNodes": 20,
+        "disableExpensiveAnimations": true
+    },
+    "detectionConfidenceFloor": 0.85,
+    "policyProofTimeoutMs": 5000,
+    "counterfactualSimTimeoutMs": 10000,
+    "counterfactualProofTimeoutMs": 15000,
+    "defenseAgentCooldownMs": 500
+}

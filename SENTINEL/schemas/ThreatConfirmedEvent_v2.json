@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "ThreatConfirmedEvent_v2",
+    "title": "ThreatConfirmedEvent@2",
+    "description": "Federated consensus threat event. Superset of @1: adds a `federation` block with per-operator attestations and K-of-N consensus metadata. Consumers that only understand @1 can treat `federation` as opaque and ignore it.",
+    "type": "object",
+    "required": [
+        "schema",
+        "eventId",
+        "confidence",
+        "pattern",
+        "attackerAddresses",
+        "victimProtocol",
+        "triggeringTxHashes",
+        "observedAtBlock",
+        "timestamp",
+        "federation"
+    ],
+    "properties": {
+        "schema": { "const": "ThreatConfirmedEvent@2" },
+        "eventId": { "type": "string" },
+        "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "Mean confidence across confirming operators, in basis points."
+        },
+        "pattern": { "type": "string" },
+        "attackerAddresses": { "type": "array", "items": { "type": "string" } },
+        "victimProtocol": { "type": "string" },
+        "triggeringTxHashes": { "type": "array", "items": { "type": "string" } },
+        "observedAtBlock": { "type": "number" },
+        "timestamp": { "type": "string" },
+        "observations": { "type": "number" },
+        "anomalyScore": { "type": "number" },
+        "sequenceScore": { "type": "number" },
+        "federation": {
+            "type": "object",
+            "required": ["consensusK", "consensusN", "operatorAttestations"],
+            "properties": {
+                "consensusK": {
+                    "type": "number",
+                    "description": "Number of operators that attested `confirmed` for this attempt."
+                },
+                "consensusN": {
+                    "type": "number",
+                    "description": "Total operators in the federation."
+                },
+                "operatorAttestations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "required": ["operatorId", "modelHash", "confidence", "level"],
+                        "properties": {
+                            "operatorId": { "type": "string" },
+                            "modelHash": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+                            "confidence": { "type": "number", "minimum": 0, "maximum": 10000 },
+                            "anomalyScore": { "type": "number" },
+                            "sequenceScore": { "type": "number" },
+                            "state": { "type": "string" },
+                            "level": { "type": "string", "enum": ["noise", "candidate", "confirmed"] },
+                            "observations": { "type": "number" },
+                            "observedAt": { "type": "string" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

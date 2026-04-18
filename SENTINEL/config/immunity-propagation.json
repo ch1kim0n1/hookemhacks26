@@ -1,0 +1,39 @@
+{
+    "description": "12-protocol mesh for <ImmunityMap>. Each propagation fans out from the origin along the precomputed edges with the given per-hop delays.",
+    "nodes": [
+        { "id": "aave", "label": "Aave v3", "layoutAngle": 0 },
+        { "id": "compound", "label": "Compound v3", "layoutAngle": 30 },
+        { "id": "uniswap", "label": "Uniswap v3", "layoutAngle": 60 },
+        { "id": "curve", "label": "Curve", "layoutAngle": 90 },
+        { "id": "maker", "label": "MakerDAO", "layoutAngle": 120 },
+        { "id": "lido", "label": "Lido", "layoutAngle": 150 },
+        { "id": "balancer", "label": "Balancer", "layoutAngle": 180 },
+        { "id": "synthetix", "label": "Synthetix", "layoutAngle": 210 },
+        { "id": "yearn", "label": "Yearn", "layoutAngle": 240 },
+        { "id": "frax", "label": "Frax", "layoutAngle": 270 },
+        { "id": "gmx", "label": "GMX", "layoutAngle": 300 },
+        { "id": "pendle", "label": "Pendle", "layoutAngle": 330 }
+    ],
+    "edges": [
+        { "a": "aave", "b": "compound" },
+        { "a": "aave", "b": "uniswap" },
+        { "a": "aave", "b": "maker" },
+        { "a": "compound", "b": "uniswap" },
+        { "a": "uniswap", "b": "curve" },
+        { "a": "curve", "b": "balancer" },
+        { "a": "curve", "b": "frax" },
+        { "a": "maker", "b": "lido" },
+        { "a": "lido", "b": "yearn" },
+        { "a": "balancer", "b": "synthetix" },
+        { "a": "synthetix", "b": "gmx" },
+        { "a": "gmx", "b": "pendle" },
+        { "a": "yearn", "b": "pendle" },
+        { "a": "aave", "b": "yearn" },
+        { "a": "compound", "b": "frax" }
+    ],
+    "propagation": {
+        "origin": "aave",
+        "hopDelayMs": 120,
+        "pulseDurationMs": 2000
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "protocolName": "DemoAMM",
+    "addressKey": "DemoAMM",
+    "trackedAddresses": [
+        { "addressKey": "DemoAMM", "label": "amm.wethReserve", "tokenKey": "WETH" },
+        { "addressKey": "DemoAMM", "label": "amm.usdcReserve", "tokenKey": "USDC" },
+        { "addressKey": "OraclePair", "label": "oracle.wethReserve", "tokenKey": "WETH" },
+        { "addressKey": "OraclePair", "label": "oracle.usdcReserve", "tokenKey": "USDC" }
+    ],
+    "attackerReplay": {
+        "attackerAddressKey": "FlashLoanAttacker",
+        "callerKey": "FlashLoanAttackerOwner",
+        "method": "attack(address,uint256)",
+        "argTypes": ["address", "uint256"],
+        "args": [{ "fromKey": "FlashLoanProvider" }, { "literalHex": "0x1bc16d674ec80000" }]
+    }
+}

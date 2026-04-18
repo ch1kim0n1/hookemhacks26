@@ -1,0 +1,122 @@
+{
+    "annotations": { "list": [] },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "type": "text",
+            "title": "ZK Proof Generation",
+            "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
+            "options": {
+                "mode": "markdown",
+                "content": "## ZK Proof Generation\n\nProver mode is configured via the `PROVER_MODE` environment variable: `bonsai` (remote Bonsai API) or `local` (local RISC Zero executor).\n\nCustom metrics coming soon:\n- `sentinel_proof_generation_duration_seconds` — proof generation latency histogram\n- `sentinel_proof_generation_total` — counter by mode and status (success/failure)\n- `sentinel_bonsai_api_errors_total` — Bonsai API error counter"
+            }
+        },
+        {
+            "type": "stat",
+            "title": "zk-prover up",
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 5 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"zk-prover\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+        },
+        {
+            "type": "stat",
+            "title": "zk-prover Uptime",
+            "gridPos": { "h": 4, "w": 6, "x": 6, "y": 5 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "process_uptime_seconds{job=\"zk-prover\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "unit": "s",
+                    "thresholds": {
+                        "steps": [{ "color": "green", "value": null }]
+                    }
+                }
+            },
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" }
+        },
+        {
+            "type": "timeseries",
+            "title": "zk-prover CPU Usage",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "rate(process_cpu_seconds_total{job=\"zk-prover\"}[1m])",
+                    "legendFormat": "CPU usage",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "unit": "percentunit"
+                }
+            },
+            "options": { "tooltip": { "mode": "single" } }
+        },
+        {
+            "type": "timeseries",
+            "title": "zk-prover Heap Memory",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "nodejs_heap_size_used_bytes{job=\"zk-prover\"}",
+                    "legendFormat": "Heap used",
+                    "refId": "A"
+                },
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "nodejs_heap_size_total_bytes{job=\"zk-prover\"}",
+                    "legendFormat": "Heap total",
+                    "refId": "B"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "unit": "bytes"
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        }
+    ],
+    "schemaVersion": 39,
+    "tags": ["sentinel"],
+    "templating": { "list": [] },
+    "time": { "from": "now-15m", "to": "now" },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Proof Generation",
+    "uid": "sentinel-proof-generation",
+    "version": 1
+}

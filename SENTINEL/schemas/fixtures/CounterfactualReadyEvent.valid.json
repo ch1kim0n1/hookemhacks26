@@ -1,0 +1,18 @@
+{
+    "schema": "CounterfactualReadyEvent@1",
+    "emittedAt": "2026-04-17T14:32:18.000Z",
+    "eventId": "evt_01HW4RQYT1ZPQ3XJ9B7MNAA002",
+    "deltaWei": "-12500000000000000000000",
+    "counterfactualRoot": "0x4b2e0fa1e3d8c6b7a5948372615049382716059483726150493827160594ffee",
+    "leaves": [
+        {
+            "address": "0x1111111111111111111111111111111111111111",
+            "label": "victim_pool",
+            "token": "0x0000000000000000000000000000000000000000",
+            "realBalanceWei": "100000000000000000000000",
+            "shadowBalanceWei": "87500000000000000000000",
+            "deltaWei": "-12500000000000000000000"
+        }
+    ],
+    "forkBlock": 19824710
+}

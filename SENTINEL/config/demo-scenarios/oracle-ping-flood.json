@@ -1,0 +1,23 @@
+{
+    "name": "Oracle Ping Flood",
+    "id": "oracle-ping-flood",
+    "category": "attack",
+    "severity": 7,
+    "summary": "Attacker rapid-fires trades against the oracle pair to bias the TWAP window and open a manipulated-price trade. Detector flags deviation velocity > threshold.",
+    "expectedOutcome": "Burst of PendingTxEvents. OraclePair.getReserves() deviation per block exceeds 300 bps. Detector emits ORACLE_MANIPULATION verdict. Defense pauses the oracle consumer.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/oracle-flood { burstSize?: number, spanBlocks?: number }"],
+    "steps": [
+        { "at": 0, "action": "banner", "text": "Oracle flood begins: 12 trades in 2 blocks" },
+        { "at": 300, "action": "trigger", "endpoint": "POST /api/v1/demo/oracle-flood" },
+        { "at": 2000, "action": "focus", "component": "BattlefieldViz" },
+        { "at": 3800, "action": "banner", "text": "TWAP skew: +480 bps in one block — above 300 bps threshold" },
+        { "at": 5500, "action": "focus", "component": "TrustInterface" },
+        {
+            "at": 7500,
+            "action": "banner",
+            "text": "Oracle consumer paused. Attacker's manipulated-price trade reverts."
+        },
+        { "at": 10000, "action": "publishImmunity" }
+    ]
+}

@@ -1,0 +1,9 @@
+{
+    "schema": "DefenseSubmittedEvent@1",
+    "eventId": "evt_01HW4RQYT1ZPQ3XJ9B7MNAA002",
+    "pattern": "flash_loan_oracle",
+    "primitive": "pause",
+    "target": "0x1111111111111111111111111111111111111111",
+    "txHash": "0xdef000000000000000000000000000000000000000000000000000000000cafe",
+    "actionHash": "0xac7104ac7104ac7104ac7104ac7104ac7104ac7104ac7104ac7104ac7104ac71"
+}

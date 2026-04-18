@@ -1,0 +1,79 @@
+{
+    "annotations": { "list": [] },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "type": "text",
+            "title": "Scenario Timing Metrics",
+            "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+            "options": {
+                "mode": "markdown",
+                "content": "## Scenario Timing Metrics\n\nScenario timing metrics will be populated when custom counters are added.\n\nExpected metrics (using `sentinel_*` prefix):\n- `sentinel_scenario_duration_seconds` — end-to-end scenario duration by scenario type\n- `sentinel_detection_latency_seconds` — time from mempool ingestion to detection\n- `sentinel_defense_response_latency_seconds` — time from detection to defense action\n- `sentinel_counterfactual_sim_duration_seconds` — simulation run duration\n\nThese metrics are emitted by the detection-engine and defense-agent services once custom prom-client counters/histograms are registered."
+            }
+        },
+        {
+            "type": "stat",
+            "title": "Services Reporting Metrics",
+            "gridPos": { "h": 4, "w": 8, "x": 0, "y": 6 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "count(up == 1)",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "thresholds": {
+                        "steps": [
+                            { "color": "red", "value": null },
+                            { "color": "yellow", "value": 3 },
+                            { "color": "green", "value": 6 }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"] },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "background"
+            }
+        },
+        {
+            "type": "timeseries",
+            "title": "sentinel_* metrics (placeholder — no data until custom counters added)",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "{__name__=~\"sentinel_.*\"}",
+                    "legendFormat": "{{__name__}} {{job}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        }
+    ],
+    "schemaVersion": 39,
+    "tags": ["sentinel"],
+    "templating": { "list": [] },
+    "time": { "from": "now-15m", "to": "now" },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Scenario Timing",
+    "uid": "sentinel-scenario-timing",
+    "version": 1
+}

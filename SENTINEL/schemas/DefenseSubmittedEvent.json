@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "DefenseSubmittedEvent",
+    "type": "object",
+    "required": ["schema", "eventId", "pattern", "primitive", "target", "txHash", "actionHash"],
+    "properties": {
+        "schema": { "const": "DefenseSubmittedEvent@1" },
+        "eventId": { "type": "string" },
+        "pattern": { "type": "string" },
+        "primitive": { "type": "string" },
+        "target": { "type": "string" },
+        "txHash": { "type": "string" },
+        "actionHash": { "type": "string" }
+    }
+}

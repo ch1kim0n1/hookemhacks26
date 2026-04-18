@@ -1,0 +1,22 @@
+{
+    "schema": "PendingTxEvent@1",
+    "observedAt": "2026-04-17T14:32:17.128Z",
+    "tx": {
+        "hash": "0x7f5c81b53c20e1b2a6f9b4a8f1d2e3c4b5a69788fedcba0987654321abcdef01",
+        "from": "0xabcdef1234567890abcdef1234567890abcdef12",
+        "to": "0x1111111111111111111111111111111111111111",
+        "value": "1500000000000000000",
+        "gasPrice": "42000000000",
+        "gasLimit": "300000",
+        "nonce": 7,
+        "selector": "0xa9059cbb",
+        "decodedArgs": {
+            "recipient": "0x2222222222222222222222222222222222222222",
+            "amount": "1000000"
+        },
+        "isFlashLoanOrigin": true,
+        "involvesProtectedProtocol": true,
+        "callGraphDepth": 3,
+        "timestamp": 1776782137
+    }
+}

@@ -1,0 +1,57 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "OperatorVerdict",
+    "title": "OperatorVerdict@1",
+    "description": "One detection operator's per-tx verdict. Published to sentinel.detection.operator.<operatorId> and consumed by the federation-coordinator for K-of-N consensus.",
+    "type": "object",
+    "required": [
+        "schema",
+        "operatorId",
+        "modelHash",
+        "address",
+        "state",
+        "level",
+        "confidence",
+        "anomalyScore",
+        "sequenceScore",
+        "triggeringTxHash",
+        "pattern"
+    ],
+    "properties": {
+        "schema": { "const": "OperatorVerdict@1" },
+        "operatorId": {
+            "type": "string",
+            "description": "Stable identifier for this operator node (e.g. alpha, beta, gamma)."
+        },
+        "modelHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$",
+            "description": "Deterministic sha256 over operator-id, seed, and model weights. Must match an entry in ModelRegistry on-chain."
+        },
+        "address": {
+            "type": "string",
+            "description": "Attacker EOA whose sliding-window state produced the verdict."
+        },
+        "state": {
+            "type": "string",
+            "enum": ["IDLE", "FLASH_LOAN_OBSERVED", "ORACLE_IMPACT_OBSERVED", "CONFIRMED"]
+        },
+        "level": {
+            "type": "string",
+            "enum": ["noise", "candidate", "confirmed"]
+        },
+        "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "Basis points (0–10 000) of confidence this operator assigns."
+        },
+        "anomalyScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sequenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "observations": { "type": "number" },
+        "triggeringTxHash": { "type": "string" },
+        "pattern": { "type": "string" },
+        "victimProtocol": { "type": "string" },
+        "observedAt": { "type": "string" }
+    }
+}

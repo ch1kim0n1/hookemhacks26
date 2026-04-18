@@ -1,0 +1,9 @@
+{
+    "schema": "LedgerRecordedEvent@1",
+    "eventId": "evt_01HW4RQYT1ZPQ3XJ9B7MNAA002",
+    "txHash": "0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed",
+    "blockNumber": 19824713,
+    "deltaWei": "-12500000000000000000000",
+    "counterfactualRoot": "0x4b2e0fa1e3d8c6b7a5948372615049382716059483726150493827160594ffee",
+    "proofDigest": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}

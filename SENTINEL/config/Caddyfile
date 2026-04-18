@@ -1,0 +1,66 @@
+# SENTINEL Caddy reverse proxy configuration
+# Usage: Set SENTINEL_DOMAIN env var, or use localhost for dev
+{$SENTINEL_DOMAIN:localhost} {
+    # API gateway (REST) — round-robin across all api-gateway replicas
+    handle /api/* {
+        reverse_proxy api-gateway:8080 {
+            lb_policy round_robin
+            health_uri /api/v1/health
+            health_interval 5s
+        }
+    }
+
+    # Auth endpoint
+    handle /auth/* {
+        reverse_proxy api-gateway:8080 {
+            lb_policy round_robin
+            health_uri /api/v1/health
+            health_interval 5s
+        }
+    }
+
+    # JWKS endpoint
+    handle /.well-known/* {
+        reverse_proxy api-gateway:8080 {
+            lb_policy round_robin
+            health_uri /api/v1/health
+            health_interval 5s
+        }
+    }
+
+    # WebSocket
+    handle /ws {
+        reverse_proxy api-gateway:8081
+    }
+
+    # Frontend
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    # Access logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# Grafana (monitoring subdomain or path)
+{$GRAFANA_DOMAIN:grafana.localhost} {
+    reverse_proxy grafana:3000
+}
+
+# Prometheus (internal only — no external access by default)
+# Uncomment if needed:
+# {$PROMETHEUS_DOMAIN:prometheus.localhost} {
+#     reverse_proxy prometheus:9090
+# }

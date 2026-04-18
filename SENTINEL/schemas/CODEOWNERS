@@ -1,0 +1,23 @@
+# Review routing for schema changes.
+# Placed in the schema directory so changes to this file move with the schemas.
+# GitHub also reads CODEOWNERS from .github/ and the repo root — until a repo-
+# wide version exists, this acts as documentation of who owns what.
+#
+# Format: <path> <owners...>
+
+# Producer-owned schemas
+PendingTxEvent.json                @mempool-monitor-owners
+OperatorVerdict.json               @detection-engine-owners
+ThreatConfirmedEvent.json          @detection-engine-owners
+ThreatConfirmedEvent_v2.json       @federation-coordinator-owners @detection-engine-owners
+CounterfactualReadyEvent.json      @counterfactual-sim-owners
+DefenseSubmittedEvent.json         @defense-agent-owners
+DefenseMinedEvent.json             @defense-agent-owners
+LedgerRecordedEvent.json           @zk-prover-owners
+PreemptiveStrikeEvent.json         @preemptive-strike-owners
+TrainingEvent.json                 @learning-loop-owners
+
+# Policy + fixtures + versioning doc are platform-wide
+README.md                          @platform-owners
+CHANGELOG.md                       @platform-owners
+fixtures/*                         @platform-owners

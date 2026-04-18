@@ -1,0 +1,71 @@
+{
+    "annotations": { "list": [] },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "type": "text",
+            "title": "Anvil State Metrics",
+            "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+            "options": {
+                "mode": "markdown",
+                "content": "## Anvil State Metrics\n\nAnvil (local Ethereum node) state metrics will be populated once custom counters are added.\n\nExpected metrics (using `sentinel_*` prefix):\n- `sentinel_anvil_block_number` — current block number on the local fork\n- `sentinel_anvil_transactions_submitted_total` — transactions submitted via Anvil (labels: `sender`, `type`)\n- `sentinel_anvil_transaction_errors_total` — failed transaction counter\n- `sentinel_anvil_impersonated_accounts_total` — number of impersonated accounts active\n- `sentinel_anvil_snapshot_restores_total` — number of state snapshot restores (used in test scenarios)\n\nAnvil is the local fork node used for simulation and live defense testing in SENTINEL."
+            }
+        },
+        {
+            "type": "stat",
+            "title": "api-gateway up (Anvil proxy)",
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 6 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "up{job=\"api-gateway\"}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "thresholds" },
+                    "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }],
+                    "thresholds": {
+                        "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                    }
+                }
+            },
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+        },
+        {
+            "type": "timeseries",
+            "title": "sentinel_anvil_* metrics (placeholder — no data until custom counters added)",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+            "datasource": { "type": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus" },
+                    "expr": "{__name__=~\"sentinel_anvil_.*\"}",
+                    "legendFormat": "{{__name__}} {{job}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        }
+    ],
+    "schemaVersion": 39,
+    "tags": ["sentinel"],
+    "templating": { "list": [] },
+    "time": { "from": "now-15m", "to": "now" },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Anvil State",
+    "uid": "sentinel-anvil-state",
+    "version": 1
+}

@@ -1,0 +1,8 @@
+{
+    "schema": "PendingTxEvent@1",
+    "observedAt": "not-a-timestamp",
+    "tx": {
+        "from": "0xabcdef1234567890abcdef1234567890abcdef12",
+        "to": "0x1111111111111111111111111111111111111111"
+    }
+}

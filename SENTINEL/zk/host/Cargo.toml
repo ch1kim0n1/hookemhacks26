@@ -1,0 +1,44 @@
+[package]
+name = "sentinel-zk-host"
+version = "0.3.0-phase2"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "prove_policy"
+path = "src/bin/prove_policy.rs"
+
+[[bin]]
+name = "prove_counterfactual"
+path = "src/bin/prove_counterfactual.rs"
+
+[[bin]]
+name = "prove_learning"
+path = "src/bin/prove_learning.rs"
+
+[[bin]]
+name = "dump_image_ids"
+path = "src/bin/dump_image_ids.rs"
+
+[dependencies]
+risc0-zkvm = { workspace = true, features = ["std", "client"] }
+risc0-ethereum-contracts = { version = "=3.0.1" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true, features = ["std"] }
+hex = { workspace = true }
+anyhow = { workspace = true }
+sentinel-zk-shared = { path = "../shared" }
+
+[build-dependencies]
+risc0-build = "=3.0.5"
+
+[package.metadata.risc0]
+methods = [
+    "../guest/policy-compliance",
+    "../guest/counterfactual-correctness",
+    "../guest/learning-correctness",
+]

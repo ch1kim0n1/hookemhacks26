@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "PreemptiveStrikeEvent",
+    "oneOf": [
+        {
+            "type": "object",
+            "required": [
+                "schema",
+                "targetProtocol",
+                "signatureHash",
+                "matchingTxHash",
+                "action",
+                "defenseTxHash",
+                "timestamp"
+            ],
+            "properties": {
+                "schema": { "const": "PreemptiveStrikeEvent@1" },
+                "targetProtocol": { "type": "string" },
+                "signatureHash": { "type": "string" },
+                "matchingTxHash": { "type": "string" },
+                "action": { "const": "pause" },
+                "defenseTxHash": { "type": "string" },
+                "timestamp": { "type": "string", "format": "date-time" }
+            }
+        },
+        {
+            "type": "object",
+            "required": ["schema", "targetProtocol", "signatureHash", "matchingTxHash", "action", "error", "timestamp"],
+            "properties": {
+                "schema": { "const": "PreemptiveAlertEvent@1" },
+                "targetProtocol": { "type": "string" },
+                "signatureHash": { "type": "string" },
+                "matchingTxHash": { "type": "string" },
+                "action": { "const": "alert" },
+                "error": { "type": "string" },
+                "timestamp": { "type": "string", "format": "date-time" }
+            }
+        }
+    ]
+}

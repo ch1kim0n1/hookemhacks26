@@ -1,0 +1,14 @@
+{
+  "full": {
+    "catches": 8,
+    "catch_rate": 1.0,
+    "false_positives": 0,
+    "p50_ms": 2.355
+  },
+  "ablated_known_selector": {
+    "catches": 8,
+    "catch_rate": 1.0,
+    "false_positives": 0,
+    "p50_ms": 2.406
+  }
+}

@@ -1,0 +1,9 @@
+{
+    "schema": "PreemptiveStrikeEvent@1",
+    "targetProtocol": "0x1111111111111111111111111111111111111111",
+    "signatureHash": "0xa9059cbb",
+    "matchingTxHash": "0x7f5c81b53c20e1b2a6f9b4a8f1d2e3c4b5a69788fedcba0987654321abcdef01",
+    "action": "frobnicate",
+    "defenseTxHash": "0xdef000000000000000000000000000000000000000000000000000000000cafe",
+    "timestamp": "2026-04-17T14:32:17.300Z"
+}

@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "TrainingEvent",
+    "type": "object",
+    "required": ["schema", "type", "generation", "timestamp", "data"],
+    "properties": {
+        "schema": { "const": "TrainingEvent@1" },
+        "type": {
+            "type": "string",
+            "enum": ["generation_start", "variant_result", "generation_complete", "policy_update"]
+        },
+        "generation": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "data": {
+            "type": "object",
+            "description": "Payload varies by type",
+            "properties": {
+                "populationSize": { "type": "number" },
+                "variantId": { "type": "string" },
+                "defended": { "type": "boolean" },
+                "deltaWei": { "type": "string" },
+                "detectionTimeMs": { "type": "number" },
+                "winRate": { "type": "number" },
+                "defended": { "type": "number" },
+                "breached": { "type": "number" },
+                "meetsThreshold": { "type": "boolean" },
+                "proposalId": { "type": "string" },
+                "changes": { "type": "array" },
+                "newWinRate": { "type": "number" },
+                "txHash": { "type": "string" },
+                "blockNumber": { "type": "number" },
+                "oldHash": { "type": "string" },
+                "newHash": { "type": "string" },
+                "onChain": { "type": "boolean" }
+            }
+        }
+    }
+}

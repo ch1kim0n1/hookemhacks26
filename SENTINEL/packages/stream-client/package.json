@@ -1,0 +1,19 @@
+{
+    "name": "@sentinel/stream-client",
+    "version": "0.1.0",
+    "private": true,
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "ioredis": "5.3.2"
+    },
+    "devDependencies": {
+        "typescript": "5.3.3",
+        "vitest": "1.4.0",
+        "@types/node": "20.11.24"
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "name": "Signature Replay",
+    "id": "signature-replay",
+    "category": "attack",
+    "severity": 8,
+    "summary": "Attacker captures a signed ERC-2612 permit from a different chain and replays it against VictimLendingPool on this chain. Detector matches the signatureHash against a known-used-permit set.",
+    "expectedOutcome": "PendingTxEvent carries a permit selector. preemptive-strike service matches signatureHash → publishes ThreatConfirmedEvent@2 pattern=SIGNATURE_REPLAY. Defense calls Pause on the pool.",
+    "runnable": false,
+    "requires": ["POST /api/v1/demo/replay-permit { originChainId: number, signatureHex: \"0x...\" }"],
+    "steps": [
+        {
+            "at": 0,
+            "action": "banner",
+            "text": "Attacker replays permit signed on chain 42161 against our chain 31337"
+        },
+        { "at": 300, "action": "trigger", "endpoint": "POST /api/v1/demo/replay-permit" },
+        { "at": 1800, "action": "focus", "component": "EventFeed" },
+        { "at": 3500, "action": "banner", "text": "signatureHash matches known-used set → SIGNATURE_REPLAY" },
+        { "at": 5500, "action": "focus", "component": "TrustInterface" },
+        { "at": 7500, "action": "banner", "text": "Pause broadcast. permit() never authorized the transfer." },
+        { "at": 10000, "action": "publishImmunity" }
+    ]
+}

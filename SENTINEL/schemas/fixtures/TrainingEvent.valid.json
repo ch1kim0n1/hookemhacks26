@@ -1,0 +1,17 @@
+{
+    "schema": "TrainingEvent@1",
+    "type": "generation_complete",
+    "generation": 42,
+    "timestamp": "2026-04-17T14:32:19.400Z",
+    "data": {
+        "populationSize": 32,
+        "winRate": 0.8421,
+        "defended": 27,
+        "breached": 5,
+        "meetsThreshold": true,
+        "proposalId": "prop_01HW4RQYT1ZPQ3XJ9B7MNAA999",
+        "changes": [{ "field": "rules.0.min_confidence", "from": 8500, "to": 9000 }],
+        "newWinRate": 0.8421,
+        "onChain": false
+    }
+}

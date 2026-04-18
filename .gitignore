@@ -1,29 +1,104 @@
-# Python
-__pycache__/
-*.pyc
-.venv/
-*.egg-info/
-
-# Node
+# ---------- Node ----------
 node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+.pnp.cjs
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm/
+.eslintcache
+.stylelintcache
+
+# ---------- Build output ----------
 dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+.parcel-cache/
+.cache/
+.vite/
+coverage/
+*.tsbuildinfo
 
-# Data
-*.db
-*.sqlite
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+.tox/
+.nox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
 
-# Secrets
-.env
-
-# Foundry
+# ---------- Foundry / Solidity ----------
 contracts/out/
 contracts/cache/
 contracts/lib/
+contracts/broadcast/
+forge-cache/
 
-# OS
+# ---------- Data / Databases ----------
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- Secrets / Env ----------
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+
+# ---------- Logs ----------
+logs/
+*.log
+
+# ---------- OS ----------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# IDE
+# ---------- IDE / Editors ----------
 .vscode/
+!.vscode/settings.json.example
 .idea/
+*.swp
+*.swo
+*~
+.history/
+
+# ---------- Deployment ----------
 .vercel
+.netlify
