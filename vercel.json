@@ -1,8 +1,8 @@
 {
-  "buildCommand": "cd dashboard && npm install && npm run build",
-  "installCommand": "pip install -r requirements.txt && cd dashboard && npm install",
-  "outputDirectory": "dashboard/dist",
+  "framework": null,
+  "installCommand": "uv pip install --system -r requirements.txt && cd dashboard && npm install",
+  "buildCommand": "cd dashboard && npm run build && mkdir -p ../public && cp -r dist/* ../public/",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" }
+    { "source": "/api/:path*", "destination": "/api/index.py" }
   ]
 }

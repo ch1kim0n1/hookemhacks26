@@ -16,13 +16,14 @@ from skill import db
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/api/health':
+        path = self.path.split('?')[0]
+        if path == '/api/health':
             self._json({"status": "ok"})
-        elif self.path.startswith('/api/detections'):
+        elif path.startswith('/api/detections'):
             self._json(db.get_recent_detections(50))
-        elif self.path.startswith('/api/stats'):
+        elif path.startswith('/api/stats'):
             self._json(db.get_stats())
-        elif self.path.startswith('/api/threats'):
+        elif path.startswith('/api/threats'):
             self._json(db.get_all_cached_threats(100))
         else:
             self._json({"error": "not found"}, 404)
@@ -31,7 +32,8 @@ class handler(BaseHTTPRequestHandler):
         length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(length)
 
-        if self.path in ('/api/scan', '/api/replay'):
+        path = self.path.split('?')[0]
+        if path in ('/api/scan', '/api/replay'):
             try:
                 data = json.loads(body)
                 content = data.get('content', '')
