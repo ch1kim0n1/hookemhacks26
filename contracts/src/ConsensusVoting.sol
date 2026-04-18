@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {ModelRegistry} from "./ModelRegistry.sol";
-
 /// @title ConsensusVoting
 /// @notice Validates K-of-N consensus bundles submitted by the
-///         federation-coordinator. A bundle is accepted iff:
-///           1. every attestation's `modelHash` is currently registered
-///              in `ModelRegistry`, and
-///           2. at least `thresholdK` distinct operator addresses are
-///              represented, and
-///           3. the supplied consensus confidence clears the minimum.
+///         defense-coordinator. A bundle is accepted iff:
+///           1. at least `thresholdK` distinct operator addresses are
+///              represented (EIP-712 signature verification is added in
+///              a later phase), and
+///           2. the supplied consensus confidence clears the minimum.
 ///
 ///         The accepted bundle is recorded by `(eventId, attackerAddress)`
 ///         so downstream contracts (SentinelGuard, ThreatRegistry, etc.)
@@ -18,8 +15,8 @@ import {ModelRegistry} from "./ModelRegistry.sol";
 contract ConsensusVoting {
     struct Attestation {
         address operator;
-        bytes32 modelHash;
-        uint16  confidence;   // basis points, 0–10 000
+        bytes32 attackHash; // hash of the attack fingerprint the operator is voting on
+        uint16  confidence; // basis points, 0–10 000
     }
 
     struct ConsensusBundle {
@@ -29,7 +26,6 @@ contract ConsensusVoting {
         Attestation[] attestations;
     }
 
-    ModelRegistry public immutable registry;
     address public admin;
     uint8   public thresholdK;
     uint8   public thresholdN;
@@ -60,17 +56,14 @@ contract ConsensusVoting {
     }
 
     constructor(
-        address _registry,
         address _admin,
         uint8 _k,
         uint8 _n,
         uint16 _minConfidence
     ) {
-        require(_registry != address(0), "ConsensusVoting: zero registry");
         require(_admin != address(0), "ConsensusVoting: zero admin");
         require(_k > 0 && _k <= _n, "ConsensusVoting: bad thresholds");
         require(_minConfidence <= 10000, "ConsensusVoting: bad confidence");
-        registry = ModelRegistry(_registry);
         admin = _admin;
         thresholdK = _k;
         thresholdN = _n;
@@ -124,14 +117,8 @@ contract ConsensusVoting {
                 return false;
             }
 
-            // modelHash must match the operator's current registered model.
-            (bytes32 currentHash, , , ) = registry.modelOf(att.operator);
-            if (currentHash == bytes32(0) || currentHash != att.modelHash) {
-                emit BundleRejected(bundle.eventId, "unregistered model");
-                return false;
-            }
-
-            // Distinct-operator check.
+            // Distinct-operator check. Per-operator identity (signature) is
+            // validated in the EIP-712 extension added by Phase 3a.
             bool dup = false;
             for (uint256 j = 0; j < distinct; j++) {
                 if (seen[j] == att.operator) {

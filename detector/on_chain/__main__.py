@@ -28,7 +28,6 @@ from eth_utils import function_signature_to_4byte_selector
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
 
 from store.redis_bus import StreamConsumer, StreamPublisher
-from .model_registry_client import register_if_possible
 from .operator import DEFAULT_ROSTER, Operator
 
 log = structlog.get_logger()
@@ -286,24 +285,6 @@ async def main() -> None:
         operator=OPERATOR_ID,
         model_hash=operator.model_hash,
         federated=_is_federated(),
-    )
-
-    # Best-effort on-chain registration of this operator's model hash.
-    reg = register_if_possible(
-        operator_id=OPERATOR_ID,
-        model_hash=operator.model_hash,
-        seed=OPERATOR_SEED,
-        metadata={
-            "operatorId": OPERATOR_ID,
-            "seed": OPERATOR_SEED,
-            "features": ["loan_norm", "price_deviation_pct", "gas_price_norm",
-                         "is_known_selector", "to_is_oracle"],
-            "architecture": "LSTM-2x64 + IsolationForest-100",
-        },
-    )
-    log.info(
-        "detection-engine.registry",
-        status=reg.status, tx=reg.tx_hash, detail=reg.detail,
     )
 
     r = redis.from_url(REDIS_URL, decode_responses=True)
