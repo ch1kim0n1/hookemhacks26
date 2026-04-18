@@ -150,4 +150,84 @@ contract DefenseProtocol {
         emit PolicyUpdated(oldHash, newPolicyHash, msg.sender, newVersion);
         return true;
     }
+
+    // ---------------------------------------------------------------
+    // ClawGuard defense-update schema
+    // ---------------------------------------------------------------
+
+    /// @notice Canonical record of a ClawGuard defense update (new rule set
+    ///         and/or new classifier weights), pinned to the attack that
+    ///         motivated it. Each record is identified by the
+    ///         defense-update-correctness zkProof journal digest.
+    struct DefenseUpdate {
+        bytes32 ruleDiffHash;           // commit of the rule bundle delta
+        bytes32 modelDeltaHash;         // commit of the MLP weight delta
+        bytes32 derivedFromAttackHash;  // scan-attestation journal hash that triggered it
+        uint256 publishedAt;            // block.timestamp of publishDefenseUpdate
+        address publisher;              // operator who submitted the update
+    }
+
+    mapping(bytes32 => DefenseUpdate) public defenseUpdates;
+
+    event DefenseUpdatePublished(
+        bytes32 indexed updateId,
+        bytes32 indexed derivedFromAttackHash,
+        bytes32 ruleDiffHash,
+        bytes32 modelDeltaHash,
+        address indexed publisher
+    );
+
+    /// @notice Record a defense-update envelope on-chain after its
+    ///         defense-update-correctness zkProof has been verified by
+    ///         `learningVerifier`. Off-chain pollers watch the event and
+    ///         apply the referenced rule + weight deltas.
+    /// @param updateId                Unique id = keccak256 of the seal envelope
+    /// @param ruleDiffHash            Commit of the new rule bundle delta
+    /// @param modelDeltaHash          Commit of the MLP weight delta
+    /// @param derivedFromAttackHash   scan-attestation journal hash that prompted the update
+    /// @param zkProof                 defense-update-correctness Groth16 seal bytes
+    /// @param publicInputs            [oldPolicyHash, newPolicyHash, attackHash, modelDeltaHash]
+    function publishDefenseUpdate(
+        bytes32 updateId,
+        bytes32 ruleDiffHash,
+        bytes32 modelDeltaHash,
+        bytes32 derivedFromAttackHash,
+        bytes calldata zkProof,
+        bytes32[] calldata publicInputs
+    ) external returns (bool) {
+        require(updateId != bytes32(0), "DefenseProtocol: zero updateId");
+        require(defenseUpdates[updateId].publishedAt == 0, "DefenseProtocol: duplicate update");
+        require(ruleDiffHash != bytes32(0) || modelDeltaHash != bytes32(0),
+            "DefenseProtocol: empty update");
+        require(derivedFromAttackHash != bytes32(0), "DefenseProtocol: zero attackHash");
+        require(publicInputs.length >= 4, "DefenseProtocol: bad inputs");
+        require(publicInputs[2] == derivedFromAttackHash,
+            "DefenseProtocol: attackHash mismatch");
+        require(publicInputs[3] == modelDeltaHash,
+            "DefenseProtocol: modelDeltaHash mismatch");
+
+        if (learningVerifier != address(0)) {
+            bool verified = IVerifier(learningVerifier).verify(zkProof, publicInputs);
+            require(verified, "DefenseProtocol: invalid update proof");
+        } else {
+            require(zkProof.length > 0, "DefenseProtocol: empty proof");
+        }
+
+        defenseUpdates[updateId] = DefenseUpdate({
+            ruleDiffHash: ruleDiffHash,
+            modelDeltaHash: modelDeltaHash,
+            derivedFromAttackHash: derivedFromAttackHash,
+            publishedAt: block.timestamp,
+            publisher: msg.sender
+        });
+
+        emit DefenseUpdatePublished(
+            updateId,
+            derivedFromAttackHash,
+            ruleDiffHash,
+            modelDeltaHash,
+            msg.sender
+        );
+        return true;
+    }
 }
