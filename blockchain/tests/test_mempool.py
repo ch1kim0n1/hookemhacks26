@@ -30,7 +30,7 @@ def test_extract_features_basic():
 
 
 def test_build_pending_envelope_schema():
-    cfg = MonitorConfig(flashLoan_providers=set(), protected_protocols=set())
+    cfg = MonitorConfig(flashLoanProviders=set(), protectedProtocols=set())
     tx = {
         "hash": "0xh",
         "from": "0xf",

@@ -71,9 +71,9 @@ demo-full: fixtures
 # --- Pivot verification (SENTINEL → ClawGuard tree) ---
 pivot-test:
 	@echo "=== pivot-test ==="
-	cd $(CURDIR) && python3 -m pytest detector/tests_on_chain blockchain/tests learning/tests -q --tb=no || true
-	cd $(CURDIR)/contracts && forge test -q 2>/dev/null || forge build
-	cd $(CURDIR)/zk && cargo test -q --no-run 2>/dev/null || echo "zk: install Rust to run cargo test"
+	cd $(CURDIR) && python3 -m pytest detector/tests_on_chain blockchain/tests learning/tests network/tests -q --tb=no || true
+	cd $(CURDIR)/contracts && forge build -q 2>/dev/null || forge build
+	cd $(CURDIR)/zk && cargo test --lib -q 2>/dev/null || echo "zk: install Rust to run cargo test"
 
 # --- Clean ---
 clean:
