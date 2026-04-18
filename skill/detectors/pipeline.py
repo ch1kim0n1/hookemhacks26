@@ -3,8 +3,9 @@
 import hashlib
 import re
 
-from .rules import scan as rule_scan, max_severity
 from .judge import judge
+from .rules import max_severity
+from .rules import scan as rule_scan
 
 try:
     from detector.classifier import classify

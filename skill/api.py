@@ -4,14 +4,23 @@ import asyncio
 import logging
 import time
 
-from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from .handler import scan_only, get_chain_client
 from . import db
+from .handler import get_chain_client, scan_only
 from .skill_audit import audit_skill_manifest
 
 logger = logging.getLogger("clawguard.api")

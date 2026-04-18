@@ -1,16 +1,16 @@
 """SQLite store for local threat cache and detection logs."""
 
-import sqlite3
 import json
+import os
+import sqlite3
 import time
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "clawguard.db"
 
 # Use /tmp on Vercel (writable), fall back to project dir locally
-import os
 if os.environ.get("VERCEL"):
-    DB_PATH = Path("/tmp/clawguard.db")
+    DB_PATH = Path("/tmp/clawguard.db")  # nosec B108
 
 
 def get_conn() -> sqlite3.Connection:

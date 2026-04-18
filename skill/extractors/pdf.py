@@ -1,7 +1,7 @@
 """Extract text from PDFs: visible text, hidden layers, metadata, embedded files."""
 
-from pathlib import Path
 from io import BytesIO
+from pathlib import Path
 
 try:
     import pdfplumber

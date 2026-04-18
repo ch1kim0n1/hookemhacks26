@@ -1,11 +1,9 @@
 """Web3 client for the ClawGuard on-chain threat registry on Base Sepolia."""
 
+import hashlib
 import json
 import os
-import time
-import hashlib
 import threading
-from pathlib import Path
 
 try:
     from web3 import Web3
@@ -13,7 +11,7 @@ try:
 except ImportError:
     HAS_WEB3 = False
 
-from ..db import cache_threat, check_threat_cache, get_all_cached_threats
+from ..db import cache_threat, check_threat_cache
 
 # ABI for ClawGuardRegistry — only the functions we call
 REGISTRY_ABI = json.loads("""[

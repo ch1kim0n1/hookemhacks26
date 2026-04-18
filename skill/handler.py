@@ -1,13 +1,11 @@
 """ClawGuard skill handler — intercepts tool calls and runs the security pipeline."""
 
 import hashlib
-import json
-import time
 
-from .extractors import extract_all
-from .detectors import detect
-from .chain import ChainClient
 from . import db
+from .chain import ChainClient
+from .detectors import detect
+from .extractors import extract_all
 
 
 class ContentBlocked(Exception):

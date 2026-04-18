@@ -3,10 +3,10 @@
 import mimetypes
 from pathlib import Path
 
-from .text import extract_text
+from .audio import extract_audio
 from .image import extract_image
 from .pdf import extract_pdf
-from .audio import extract_audio
+from .text import extract_text
 
 
 def detect_modality(content: str | bytes, content_type: str | None = None,
