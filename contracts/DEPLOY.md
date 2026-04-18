@@ -28,6 +28,10 @@ forge verify-contract <ADDRESS> ClawGuardRegistry \
   --etherscan-api-key "$BASESCAN_API_KEY"
 ```
 
+## VictimLendingPool (`src/VictimLendingPool.sol`)
+
+Demo **USDC/WETH** pool using a **spot oracle** (`MockOraclePair`) with no TWAP — intentionally exploitable for Scenario A. Wrapped by `SentinelGuard` (`sentinelProtected`). Tests: `contracts/test/VictimLendingPool.t.sol`.
+
 ## PauseController (`src/PauseController.sol`)
 
 Emergency pause: only the configured **policy registry** address (your deployed `DefenseProtocol`) may `activate`; **governance** (deployer) may `deactivate`. Pair with `DEFENSE_PROTOCOL_ADDRESS` and `PAUSE_CONTROLLER_ADDRESS` in `.env`.
