@@ -98,6 +98,20 @@ async def lifespan(app: FastAPI):
         init_alerts(slack)
         logger.info("Slack alerting configured")
     logger.info("Secrets manager initialized; database migrations applied")
+
+    # Pre-warm ZK prover in the background — off by default in tests to
+    # keep them fast. Any failure is non-fatal (prover falls back to mock).
+    if not os.environ.get("PYTEST_CURRENT_TEST") and os.environ.get(
+        "CLAWGUARD_ZK_PREWARM", "1"
+    ) not in ("0", "false", "no"):
+        try:
+            from zk.prover import mode_description, prewarm
+
+            logger.info("zk prover mode: %s", mode_description())
+            prewarm()
+        except Exception as exc:
+            logger.warning("zk prewarm skipped: %s", exc)
+
     yield
     logger.info("ClawGuard API shutting down")
     await asyncio.sleep(0.2)

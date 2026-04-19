@@ -178,6 +178,28 @@ def redact_content_preview(preview: str, max_len: int = 100) -> str:
     return redacted[:max_len]
 
 
+def record_scan_attestation(
+    *,
+    content_hash: str,
+    proof: str,
+    image_id: str,
+    mock: bool,
+) -> None:
+    """Store a ZK scan attestation record. Best-effort — uses audit_log so we
+    don't need a schema migration for a demo-critical path. The distinct
+    action name lets the dashboard filter them out."""
+    detail = f"image_id={image_id} mock={int(bool(mock))} proof_len={len(proof)}"
+    try:
+        audit_log(
+            action="zk_scan_attestation",
+            resource=f"content_hash:{content_hash}",
+            detail=detail,
+            result="success",
+        )
+    except Exception:
+        pass
+
+
 def audit_log(
     action: str,
     resource: str = "",

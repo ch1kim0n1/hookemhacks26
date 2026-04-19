@@ -1,0 +1,12 @@
+{
+    "_comment": "Template for Base Sepolia deploy. Copy to addresses.base-sepolia.json and fill in after running `forge script script/DeployAll.s.sol --broadcast --rpc-url $BASE_SEPOLIA_RPC_URL`. Then point ADDRESSES_FILE at this file.",
+    "_chainId": 84532,
+    "_network": "base-sepolia",
+    "ClawGuardRegistry": "0x0000000000000000000000000000000000000000",
+    "DefenseProtocol": "0x0000000000000000000000000000000000000000",
+    "ConsensusVoting": "0x0000000000000000000000000000000000000000",
+    "PauseController": "0x0000000000000000000000000000000000000000",
+    "VictimLendingPool": "0x0000000000000000000000000000000000000000",
+    "ModelRegistry": "0x0000000000000000000000000000000000000000",
+    "RiscZeroVerifier": "0x0000000000000000000000000000000000000000"
+}

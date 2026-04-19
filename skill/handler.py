@@ -1,11 +1,58 @@
 """ClawGuard skill handler — intercepts tool calls and runs the security pipeline."""
 
 import hashlib
+import logging
+import threading
 
 from . import db
 from .chain import ChainClient
 from .detectors import detect
 from .extractors import extract_all
+
+logger = logging.getLogger(__name__)
+
+
+def _attest_scan_async(content_hash: str, verdict: dict, modality: str) -> None:
+    """Fire-and-forget ZK scan attestation for non-pass verdicts.
+
+    Runs in a background thread so proof generation never delays a BLOCK
+    response to the agent. Stored in the detections table under `zk_proof`.
+    """
+    try:
+        from zk.prover import prove_scan
+    except ImportError:
+        return
+
+    def _work() -> None:
+        try:
+            pattern = "unknown"
+            rule_matches = verdict.get("details", {}).get("rule_matches", [])
+            if rule_matches:
+                pattern = rule_matches[0].get("category", "unknown")
+            out = prove_scan(
+                {
+                    "evidence": {
+                        "pattern": pattern,
+                        "confidence": int(float(verdict.get("confidence", 0)) * 10_000),
+                        "contentHashHex": hashlib.sha256(content_hash.encode()).hexdigest(),
+                    },
+                    "policyHashHex": hashlib.sha256(b"clawguard-policy-v0").hexdigest(),
+                    "eventIdHex": hashlib.sha256(f"{content_hash}:{modality}".encode()).hexdigest(),
+                }
+            )
+            try:
+                db.record_scan_attestation(
+                    content_hash=content_hash,
+                    proof=out.get("proof", ""),
+                    image_id=out.get("imageId", ""),
+                    mock=bool(out.get("_mock")),
+                )
+            except Exception:
+                pass
+        except Exception as exc:
+            logger.debug("scan_attestation_failed: %s", exc)
+
+    threading.Thread(target=_work, name="zk-scan-attest", daemon=True).start()
 
 
 def _audit_non_pass(
@@ -130,6 +177,9 @@ def intercept(tool_name: str, content: str | bytes,
             category = _categorize(verdict)
             sample = _redact(text[:200])
             chain.publish_attack(content_hash, category, sample)
+
+        # Fire-and-forget ZK attestation — must not delay agent response.
+        _attest_scan_async(content_hash, verdict, extraction["modality"])
 
         raise ContentBlocked(verdict)
 

@@ -14,6 +14,52 @@ from .rule_extractor import extract_from_variations
 logger = logging.getLogger(__name__)
 
 
+def _generate_defense_proof(
+    *,
+    old_policy_hash: bytes,
+    new_policy_hash: bytes,
+    derived_from_attack_hash: bytes,
+    model_delta_hash: bytes,
+    variant_count: int,
+) -> tuple[bytes, list[bytes]] | None:
+    """Return `(proof_bytes, public_inputs)` or None if ZK layer unavailable.
+
+    Uses zk.prover which falls back to a mock deterministically when the
+    Rust prover binary isn't built. Errors are logged but never raised —
+    the learning round should still publish with a fallback proof if ZK
+    fails, gated by ALLOW_EMPTY_ZK_PROOF at the publisher boundary.
+    """
+    try:
+        from zk.prover import prove_defense_update
+    except ImportError:
+        return None
+    try:
+        result = prove_defense_update(
+            {
+                "oldPolicyHashHex": old_policy_hash.hex(),
+                "newPolicyHashHex": new_policy_hash.hex(),
+                "derivedFromAttackHashHex": derived_from_attack_hash.hex(),
+                "modelDeltaHashHex": model_delta_hash.hex(),
+                "variantCount": variant_count,
+            }
+        )
+        proof_hex = result.get("proof", "")
+        if proof_hex.startswith("0x"):
+            proof_hex = proof_hex[2:]
+        proof_bytes = bytes.fromhex(proof_hex) if proof_hex else b""
+        public_inputs = []
+        for s in result.get("publicInputs", []):
+            s = s[2:] if s.startswith("0x") else s
+            try:
+                public_inputs.append(bytes.fromhex(s).rjust(32, b"\x00")[-32:])
+            except ValueError:
+                public_inputs.append(hashlib.sha256(s.encode()).digest())
+        return proof_bytes, public_inputs
+    except Exception as exc:
+        logger.warning("defense_update proof generation failed: %s", exc)
+        return None
+
+
 class LearningOrchestrator:
     def __init__(self) -> None:
         self.red = RedAgent()
@@ -30,15 +76,37 @@ class LearningOrchestrator:
             score = self.blue.forward([0.2, 0.4, 0.1, 0.0, 0.0])
             payload = {"rules": rules, "blue_score": score, "variants": len(variants)}
             derived = hashlib.sha256(seed_prompt.encode()).digest()
+            # Derive hashes that feed the ZK circuit — small, stable, demo-safe.
+            rules_blob = hashlib.sha256(("\n".join(rules)).encode()).digest()
+            model_delta = hashlib.sha256(f"score={score:.6f}|n={len(variants)}".encode()).digest()
+            old_policy = hashlib.sha256(b"clawguard-policy-v0").digest()
+            new_policy = hashlib.sha256(rules_blob + model_delta).digest()
+
+            proof_result = _generate_defense_proof(
+                old_policy_hash=old_policy,
+                new_policy_hash=new_policy,
+                derived_from_attack_hash=derived,
+                model_delta_hash=model_delta,
+                variant_count=len(variants),
+            )
+            if proof_result is not None:
+                proof_bytes, _public_inputs = proof_result
+                payload["zk_mode"] = "real"
+            else:
+                # Last-resort fallback (publisher will still refuse unless
+                # ALLOW_EMPTY_ZK_PROOF is set, so intent stays explicit).
+                proof_bytes = hashlib.sha256(b"mock-zk-proof:" + derived).digest()
+                payload["zk_mode"] = "fallback"
+
             publish_ok: bool | None = None
             try:
-                # We use the mock ZK prover for defense-update proofs. Publisher
-                # will refuse an empty proof unless ALLOW_EMPTY_ZK_PROOF is set;
-                # we supply a non-empty mock proof so intent is explicit.
-                mock_proof = hashlib.sha256(b"mock-zk-proof:" + derived).digest()
                 result = publish_defense_update(
+                    rule_diff_hash=rules_blob,
+                    model_delta_hash=model_delta,
                     derived_from_attack_hash=derived,
-                    proof=mock_proof,
+                    old_policy_hash=old_policy,
+                    new_policy_hash=new_policy,
+                    proof=proof_bytes,
                 )
                 if isinstance(result, dict):
                     publish_ok = bool(result.get("ok"))

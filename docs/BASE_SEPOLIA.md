@@ -35,6 +35,25 @@ python scripts/verify_base_sepolia.py
 
 The script checks that each configured address returns non-empty bytecode on-chain.
 
+### Extracting addresses from a broadcast
+
+If you used `forge script ... --broadcast`, generate both the addresses JSON
+and a ready-to-paste `.env` fragment in one step:
+
+```bash
+python scripts/extract_addresses.py \
+    contracts/broadcast/DeployAll.s.sol/84532/run-latest.json \
+    > config/addresses.base-sepolia.json
+# stdout: addresses JSON (write to a file)
+# stderr: `.env` fragment (paste into .env)
+```
+
+Then point the runtime at the JSON:
+
+```bash
+export ADDRESSES_FILE=config/addresses.base-sepolia.json
+```
+
 ## End-to-end checks (manual)
 
 With keys and addresses set:

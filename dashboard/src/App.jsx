@@ -1,6 +1,100 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 const API = '/api'
+
+// WebSocket endpoint for live detection + stats.
+// Resolves to ws(s)://<host>/ws/updates so it works behind Vite dev proxy
+// and in prod where the API is same-origin.
+function wsUrl(path) {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${proto}//${window.location.host}${path}`
+}
+
+// Live-feed hook: opens /ws/updates, reconnects with backoff, exposes a
+// ring-buffer of detections and the latest stats snapshot.
+function useLiveFeed({ maxDetections = 50 } = {}) {
+  const [detections, setDetections] = useState([])
+  const [stats, setStats] = useState(null)
+  const [status, setStatus] = useState('connecting') // connecting | open | closed
+  const wsRef = useRef(null)
+
+  useEffect(() => {
+    let closed = false
+    let backoff = 500
+
+    const connect = () => {
+      if (closed) return
+      const url = wsUrl('/ws/updates')
+      let ws
+      try {
+        ws = new WebSocket(url)
+      } catch (e) {
+        setStatus('closed')
+        setTimeout(connect, backoff)
+        backoff = Math.min(backoff * 2, 10_000)
+        return
+      }
+      wsRef.current = ws
+      setStatus('connecting')
+
+      ws.onopen = () => {
+        setStatus('open')
+        backoff = 500
+      }
+      ws.onmessage = (evt) => {
+        try {
+          const msg = JSON.parse(evt.data)
+          if (msg.type === 'detection' && msg.detection) {
+            setDetections((prev) => {
+              const next = [msg.detection, ...prev]
+              return next.slice(0, maxDetections)
+            })
+          } else if (msg.type === 'stats') {
+            setStats({
+              ...msg.stats,
+              cached_threats: msg.cached_threats ?? msg.stats?.cached_threats,
+            })
+          }
+        } catch {
+          /* ignore malformed frames */
+        }
+      }
+      ws.onerror = () => setStatus('closed')
+      ws.onclose = () => {
+        setStatus('closed')
+        if (!closed) {
+          setTimeout(connect, backoff)
+          backoff = Math.min(backoff * 2, 10_000)
+        }
+      }
+    }
+
+    connect()
+    return () => {
+      closed = true
+      if (wsRef.current) {
+        try { wsRef.current.close() } catch { /* noop */ }
+      }
+    }
+  }, [maxDetections])
+
+  return { detections, stats, status }
+}
+
+function LiveStatusPill({ status }) {
+  const map = {
+    connecting: { dot: 'bg-amber-400', label: 'connecting', ring: 'ring-amber-400/30' },
+    open: { dot: 'bg-emerald-400', label: 'live', ring: 'ring-emerald-400/30' },
+    closed: { dot: 'bg-zinc-500', label: 'offline', ring: 'ring-zinc-500/30' },
+  }
+  const s = map[status] || map.closed
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-900/60 border border-zinc-800 ring-1 ${s.ring} text-[10px] font-mono uppercase tracking-wider text-zinc-400`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot} ${status === 'open' ? 'animate-pulse' : ''}`} />
+      {s.label}
+    </span>
+  )
+}
 
 function VerdictBadge({ verdict, large }) {
   const styles = {
@@ -241,48 +335,63 @@ function Scanner() {
 }
 
 function BlockedAttacksFeed() {
-  const [attacks, setAttacks] = useState([])
-  const [error, setError] = useState(null)
+  const { detections, stats, status } = useLiveFeed({ maxDetections: 50 })
+  const [fallback, setFallback] = useState([])
 
+  // Seed with the REST endpoint once so we don't show "empty" while the
+  // WebSocket reconnects on a cold page load.
   useEffect(() => {
-    const load = async () => {
+    let cancelled = false
+    ;(async () => {
       try {
         const res = await fetch(`${API}/attacks?limit=30`)
-        if (res.ok) {
-          const data = await res.json()
-          setAttacks(data.attacks || [])
-          setError(null)
-        } else {
-          setError(`HTTP ${res.status}`)
-        }
-      } catch (e) {
-        setError(e?.message || 'Failed to load attacks')
-      }
-    }
-    load()
-    const id = setInterval(load, 4000)
-    return () => clearInterval(id)
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        setFallback(data.attacks || [])
+      } catch { /* noop — live feed will take over */ }
+    })()
+    return () => { cancelled = true }
   }, [])
+
+  // Live detections supersede the seeded list once anything streams in.
+  const attacks = detections.length > 0 ? detections : fallback
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-zinc-500 uppercase tracking-wider">Live blocked / non-pass (from API)</div>
-      {error && (
-        <div className="text-sm text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">
-          {error}
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-zinc-500 uppercase tracking-wider">Live blocked / non-pass feed</div>
+        <div className="flex items-center gap-2">
+          {stats?.cached_threats != null && (
+            <span className="text-[10px] font-mono text-zinc-500">
+              cache: {stats.cached_threats}
+            </span>
+          )}
+          <LiveStatusPill status={status} />
         </div>
-      )}
+      </div>
       {attacks.length === 0 ? (
-        <div className="text-sm text-zinc-600 py-6 text-center">No blocked attempts logged yet.</div>
+        <div className="text-sm text-zinc-600 py-6 text-center">
+          No blocked attempts logged yet.
+        </div>
       ) : (
         <div className="space-y-2 max-h-[420px] overflow-y-auto">
           {attacks.map((a, i) => (
-            <div key={a.id || i} className="bg-red-950/20 border border-red-900/30 rounded-lg p-3 text-sm">
+            <div
+              key={a.id || `${a.content_hash || 'x'}-${i}`}
+              className="bg-red-950/20 border border-red-900/30 rounded-lg p-3 text-sm transition-all duration-300"
+            >
               <div className="flex justify-between gap-2">
                 <VerdictBadge verdict={a.verdict} />
                 <span className="text-xs text-zinc-600 font-mono">{a.modality}</span>
               </div>
-              {a.content_preview && <div className="text-xs text-zinc-500 mt-1 truncate">{a.content_preview}</div>}
+              {a.content_preview && (
+                <div className="text-xs text-zinc-500 mt-1 truncate">{a.content_preview}</div>
+              )}
+              {a.reasons && a.reasons.length > 0 && (
+                <div className="text-[10px] text-red-400/70 mt-1 truncate">
+                  {Array.isArray(a.reasons) ? a.reasons[0] : a.reasons}
+                </div>
+              )}
             </div>
           ))}
         </div>
