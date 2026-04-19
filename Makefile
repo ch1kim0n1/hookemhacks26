@@ -38,6 +38,20 @@ contracts:
 	@echo ""
 	@echo "Update CLAWGUARD_REGISTRY_ADDRESS in .env with the deployed address above"
 
+# --- Redeploy fresh contract + auto-update .env (demo reset) ---
+redeploy:
+	@echo "=== Redeploying fresh ClawGuardRegistry to Base Sepolia ==="
+	cd $(CURDIR)/contracts && set -a && source ../.env && set +a && \
+		forge script script/Deploy.s.sol --broadcast --rpc-url $$BASE_SEPOLIA_RPC_URL
+	$(eval NEW_ADDR := $(shell python3 -c "import json; data=json.load(open('contracts/broadcast/Deploy.s.sol/84532/run-latest.json')); [print(t['contractAddress']) for t in data['transactions'] if t['transactionType']=='CREATE']"))
+	@echo "New contract: $(NEW_ADDR)"
+	@sed -i '' 's|^CLAWGUARD_REGISTRY_ADDRESS=.*|CLAWGUARD_REGISTRY_ADDRESS=$(NEW_ADDR)|' .env
+	@echo "=== .env updated with new address ==="
+	@echo "Wiping local threat cache..."
+	@rm -f clawguard.db
+	cd $(CURDIR) && uv run alembic upgrade head
+	@echo "=== Done — fresh slate ready for demo ==="
+
 # --- Run the full demo ---
 demo: fixtures
 	@echo "=== Running ClawGuard Demo ==="

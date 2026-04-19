@@ -176,7 +176,7 @@ class ChainClient:
             ).build_transaction({
                 "from": account.address,
                 "nonce": self.w3.eth.get_transaction_count(account.address),
-                "gas": 200000,
+                "gas": 400000,
                 "gasPrice": self.w3.eth.gas_price,
             })
 
