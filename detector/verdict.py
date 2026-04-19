@@ -5,7 +5,7 @@ import hashlib
 import re
 
 from .classifier import classify
-from .judge import judge
+from .llm_judge import judge
 from .rules import max_severity
 from .rules import scan as rule_scan
 

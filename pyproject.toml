@@ -57,6 +57,7 @@ build-backend = "setuptools.build_meta"
 where = ["."]
 include = [
     "skill*",
+    "clawguard*",
     "learning*",
     "network*",
     "zk*",
