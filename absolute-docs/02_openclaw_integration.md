@@ -11,71 +11,106 @@ OpenClaw skills are packaged as a directory containing a `SKILL.md` file (which 
 ## ClawGuard Skill Structure
 
 ```
-clawguard/
+skill/
 ├── SKILL.md              ← skill manifest and capability description
 ├── handler.py            ← hook registrar and main entry point
-├── extractor/
+├── detectors/
+│   ├── rules.py          ← regex rule layer (30+ patterns)
+│   ├── classifier.py     ← DeBERTa-v3 prompt injection detector
+│   ├── judge.py          ← LLM judge for ambiguous verdicts
+│   ├── pipeline.py       ← aggregates all three layers
+│   └── tests/
+├── extractors/
 │   ├── text.py           ← plain text extraction and cleaning
 │   ├── image.py          ← Tesseract OCR + PIL metadata
 │   ├── pdf.py            ← pdfplumber, hidden layers, embedded files
-│   └── audio.py          ← Whisper transcription
-├── detector/
-│   ├── rules.py          ← regex rule layer (30+ patterns)
-│   ├── classifier.py     ← DistilBERT fine-tuned classifier
-│   ├── llm_judge.py      ← LLM judge for ambiguous verdicts
-│   └── verdict.py        ← aggregates all three layers
-├── blockchain/
-│   ├── threat_feed.py    ← ThreatRegistry read/write
-│   ├── mempool.py        ← Alchemy WS subscription
-│   └── defense.py        ← PauseController trigger
-├── learning/
-│   ├── red_agent.py      ← variation generator (Bayesian GP)
-│   ├── blue_agent.py     ← MLP model updater
-│   └── publisher.py      ← packages rules + delta + ZK proof
-├── store/
-│   ├── sqlite.py         ← local event log
-│   └── redis_bus.py      ← internal event bus
-└── config.yaml           ← protected contracts, thresholds, node identity
+│   ├── audio.py          ← Whisper transcription
+│   ├── router.py         ← unified extraction entry point
+│   └── tests/
+├── chain/
+│   ├── client.py         ← async Ethereum JSON-RPC client
+│   └── threat_registry.py ← ThreatRegistry read/write
+├── api.py                ← FastAPI endpoint for skill dashboard
+├── config/               ← protected contracts, node settings
+├── db.py                 ← SQLite event logging
+├── observability/        ← Prometheus metrics + alerting
+└── tests/
+
+Top-level modules:
+detector/                 ← Detection pipeline components
+├── rules.py
+├── classifier.py
+├── llm_judge.py
+├── verdict.py
+└── tests_on_chain/
+
+extractor/                ← Content extraction
+├── text.py
+├── image.py
+├── pdf.py
+├── audio.py
+├── router.py
+└── tests/
+
+learning/                 ← Self-learning loop
+├── red_agent.py         ← variation generator (Bayesian GP)
+├── blue_agent.py        ← MLP model updater
+├── orchestrator.py      ← learning loop orchestration
+├── publisher.py         ← packages updates + ZK proof
+├── rule_extractor.py    ← derives new rules from variations
+└── tests/
+
+blockchain/              ← On-chain defense layer
+├── mempool_monitor.py   ← Alchemy WS subscription
+├── on_chain_detection.py ← Flash loan detection
+├── preemptive_strike.py ← Defense triggering
+├── async_client.py      ← JSON-RPC transport
+└── defense_agent/
+
+network/                 ← Cross-node coordination
+├── poller.py           ← polls ThreatRegistry + DefenseProtocol
+├── applier.py          ← applies received defense updates
+└── tests/
+
+store/                   ← Event and state persistence
+├── redis_bus.py        ← internal event bus (optional)
+└── (SQLite in skill/db.py)
 ```
 
 ## SKILL.md (Manifest)
 
-```markdown
-# ClawGuard
+The `skill/SKILL.md` file declares the skill's capabilities and which OpenClaw tools it hooks:
 
-ClawGuard is a security skill that protects OpenClaw agents from prompt
-injection attacks embedded in external content (webpages, PDFs, emails,
-images, audio) and from on-chain exploits targeting blockchain protocols
-the agent interacts with.
-
-## What it does
-
-- Intercepts all tool calls that read outside content before the content
-  reaches the agent
-- Runs multimodal extraction + three-layer injection detection
-- Checks content hash against the community on-chain threat feed
-- Blocks or sanitizes malicious content with an explanation
-- Monitors the blockchain mempool for exploit patterns and triggers
-  on-chain defenses when a threat is confirmed
-- Learns from every caught attack, generates variations, updates its
-  own detection model, and propagates the defense to the network
-
-## Hooks registered
-
-- pre_tool: web_fetch
-- pre_tool: read_file
-- pre_tool: read_email
-- pre_tool: download
-- pre_tool: execute_code (content scan only, not execution block)
-
-## Configuration
-
-Set in config.yaml:
-  - protected_contracts: list of on-chain addresses to monitor
-  - block_threshold: confidence above which content is blocked (default 0.85)
-  - sanitize_threshold: confidence above which content is sanitized (default 0.5)
-  - publish_attacks: whether to publish new attacks to chain (default true)
-  - node_identity: wallet address for signing verdicts and receiving bounties
+```yaml
+---
+name: clawguard
+version: 0.1.0
+description: Security middleware that defends OpenClaw agents against prompt injection attacks across text, images, PDFs, and audio.
+hooks:
+  pre_tool:
+    - tool: email_read
+      handler: skill.handler.intercept_entry
+    - tool: web_fetch
+      handler: skill.handler.intercept_entry
+    - tool: file_read
+      handler: skill.handler.intercept_entry
+    - tool: image_view
+      handler: skill.handler.intercept_entry
+    - tool: pdf_read
+      handler: skill.handler.intercept_entry
+    - tool: audio_listen
+      handler: skill.handler.intercept_entry
+dependencies:
+  - pytesseract
+  - pdfplumber
+  - openai-whisper
+  - transformers
+  - web3
+requires_env:
+  - ANTHROPIC_API_KEY
+  - BASE_SEPOLIA_RPC_URL
+  - CLAWGUARD_REGISTRY_ADDRESS
+---
 ```
 
 ## Hook Interception Flow
@@ -84,42 +119,44 @@ When OpenClaw is about to call `web_fetch("https://news.example.com/article")`:
 
 ```
 1. OpenClaw prepares tool call: web_fetch(url)
-2. Hook registrar intercepts — ClawGuard fires BEFORE web_fetch executes
-3. ClawGuard fetches the content itself (or receives it if post-hook)
-4. Runs full detection pipeline on the content
-5a. PASS   → returns content to OpenClaw unchanged, logs event
-5b. SANITIZE → strips malicious segments, returns cleaned content with
-               a warning annotation the agent can see:
-               "[ClawGuard: 2 suspicious segments removed. Reason: ...]"
-5c. BLOCK  → returns an error to OpenClaw:
-               "[ClawGuard: BLOCKED. This content contains a prompt
-               injection attempt. The agent's original task continues
-               with this source removed.]"
-6. OpenClaw continues its task with whatever ClawGuard returned
+2. skill.handler.intercept_entry() fires via the hook system
+3. ClawGuard fetches the content and passes to skill.extractors.extract_all()
+4. skill.detectors.detect() runs the three-layer detection pipeline
+5. Verdict is returned and logged to skill/db.py
+6a. PASS   → content returned to OpenClaw unchanged
+6b. SANITIZE → stripped content with warning annotation
+6c. BLOCK  → returns error to OpenClaw with reason
+7. OpenClaw continues with verdict result
 ```
 
-The agent never sees the malicious content. From the agent's perspective, ClawGuard is invisible on clean content and a transparent firewall on malicious content.
+The detection pipeline is in `skill/detectors/pipeline.py` which calls:
+- `detector.rules.scan()` - regex rule matching
+- `detector.classifier.classify()` - ML classification (if available)
+- `detector.llm_judge.judge()` - LLM verification for ambiguous cases
+- `detector.verdict.detect()` - unified verdict aggregation
 
 ## Verdict Schema
 
-Every interception produces a verdict record stored in SQLite and optionally published on-chain:
+Every interception produces a verdict record stored in SQLite (via `skill/db.py`) and optionally published on-chain via `learning/publisher.py`:
 
 ```json
 {
   "verdict": "block" | "sanitize" | "pass",
   "confidence": 0.0 - 1.0,
-  "reasons": ["direct_injection", "zero_width_chars", "classifier_hit"],
+  "reasons": ["rule_match: IGNORE_PREVIOUS", "classifier_hit"],
   "source": "https://news.example.com/article",
   "content_hash": "0xabc123...",
   "layers": {
-    "rules": { "fired": ["IGNORE_PREVIOUS", "SYSTEM_PROMPT"], "score": 0.9 },
-    "classifier": { "label": "injection", "score": 0.94 },
-    "llm_judge": { "verdict": "yes", "reason": "Attempts to override system prompt" }
+    "rules": { "matches": ["IGNORE_PREVIOUS_INSTRUCTIONS"], "max_severity": 0.9 },
+    "classifier": { "is_injection": true, "confidence": 0.94 },
+    "judge": { "verdict": "injection", "confidence": 0.88, "reason": "Attempts to override system prompt" }
   },
   "timestamp": "2026-04-18T14:32:01Z",
   "node_id": "0xNodeWalletAddress"
 }
 ```
+
+The detection logic is defined in `skill/detectors/pipeline.py` which orchestrates the three layers and uses the `detector/` module's components for actual analysis.
 
 ## What the Agent Sees
 

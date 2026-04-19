@@ -4,7 +4,13 @@
 
 **Base Sepolia testnet** (chainId: 84532). Chosen for: 2-second block times, low fees, familiar tooling for judges, and good Alchemy WebSocket support for mempool monitoring. Production deployment targets Base mainnet.
 
-All contracts deployed with Foundry. Addresses stored in `config/addresses.json` after deployment.
+The network is coordinated entirely through these contracts deployed on Base Sepolia. All contracts are in `contracts/src/`. Node clients are in `blockchain/` and `skill/chain/`.
+
+Access patterns:
+- ThreatRegistry lookup: `skill/chain/threat_registry.py` -> `blockchain/async_client.py`
+- Defense updates: `learning/publisher.py` -> `blockchain/async_client.py`
+- Network polling: `network/poller.py` -> `blockchain/async_client.py`
+- Defense application: `network/applier.py` with ZK verification
 
 ---
 

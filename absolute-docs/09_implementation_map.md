@@ -61,25 +61,36 @@ This table maps every major component of the SENTINEL v2 backend to its status i
 
 These components do not exist in SENTINEL v2 and must be built:
 
-| Component | File | Priority |
-|-----------|------|----------|
-| OpenClaw skill manifest | `clawguard/SKILL.md` | **Critical** |
-| Hook registrar | `clawguard/handler.py` | **Critical** |
-| Text extractor | `extractor/text.py` | **Critical** |
-| PDF extractor | `extractor/pdf.py` | **Critical** (demo relies on PDF scenario) |
-| Image extractor (OCR) | `extractor/image.py` | **High** |
-| Audio extractor | `extractor/audio.py` | **Low** (cut if time is short) |
-| Rule layer (30+ patterns) | `detector/rules.py` | **Critical** |
-| DistilBERT classifier | `detector/classifier.py` | **High** |
-| LLM judge | `detector/llm_judge.py` | **High** |
-| Verdict aggregator | `detector/verdict.py` | **Critical** |
-| Rule extractor (from variations) | `learning/rule_extractor.py` | **High** |
-| Defense publisher | `learning/publisher.py` | **High** |
-| Network poller | `network/poller.py` | **Critical** |
-| Defense update applier | `network/applier.py` | **Critical** |
-| `DefenseProtocol.sol` | `contracts/src/DefenseProtocol.sol` | **Critical** |
-| `ConsensusVoting.sol` (adapted) | `contracts/src/ConsensusVoting.sol` | **Critical** |
-| ClawGuard dashboard (React) | `frontend/` | **Critical** (demo quality) |
+| Component | File | Priority | Status |
+|-----------|------|----------|--------|
+| OpenClaw skill manifest | `skill/SKILL.md` | **Critical** | ✅ Implemented |
+| Hook registrar | `skill/handler.py` + `skill/hook_registrar.py` | **Critical** | ✅ Implemented |
+| Text extractor | `extractor/text.py` | **Critical** | ✅ Implemented |
+| PDF extractor | `extractor/pdf.py` | **Critical** | ✅ Implemented |
+| Image extractor (OCR) | `extractor/image.py` | **High** | ✅ Implemented |
+| Audio extractor | `extractor/audio.py` | **Low** | ✅ Implemented |
+| Rule layer (30+ patterns) | `detector/rules.py` | **Critical** | ✅ Implemented |
+| DeBERTa classifier | `detector/classifier.py` | **High** | ✅ Implemented |
+| LLM judge | `detector/llm_judge.py` | **High** | ✅ Implemented |
+| Verdict aggregator | `detector/verdict.py` + `skill/detectors/pipeline.py` | **Critical** | ✅ Implemented |
+| Rule extractor (from variations) | `learning/rule_extractor.py` | **High** | ✅ Implemented |
+| Red agent (Bayesian GP) | `learning/red_agent.py` + `learning/bayesian_opt.py` | **High** | ✅ Implemented |
+| Blue agent (MLP) | `learning/blue_agent.py` | **High** | ✅ Implemented |
+| Learning orchestrator | `learning/orchestrator.py` | **High** | ✅ Implemented |
+| Defense publisher | `learning/publisher.py` | **High** | ✅ Implemented |
+| Network poller | `network/poller.py` | **Critical** | ✅ Implemented |
+| Defense update applier | `network/applier.py` | **Critical** | ✅ Implemented |
+| Async RPC client | `blockchain/async_client.py` | **Critical** | ✅ Implemented |
+| Mempool monitor | `blockchain/mempool_monitor.py` | **High** | ✅ Implemented |
+| On-chain detection | `blockchain/on_chain_detection.py` | **High** | ✅ Implemented |
+| ThreatRegistry contract | `contracts/src/ThreatRegistry.sol` | **Critical** | ✅ Deployed |
+| DefenseProtocol contract | `contracts/src/DefenseProtocol.sol` | **Critical** | ✅ Deployed |
+| ConsensusVoting contract | `contracts/src/ConsensusVoting.sol` | **Critical** | ✅ Deployed |
+| PauseController contract | `contracts/src/PauseController.sol` | **Critical** | ✅ Deployed |
+| Threat Registry RPC client | `skill/chain/threat_registry.py` | **Critical** | ✅ Implemented |
+| SQLite event store | `skill/db.py` | **Critical** | ✅ Implemented |
+| Dashboard (React) | `frontend/` | **Critical** | ✅ Implemented |
+| Local skill tests | `skill/tests/`, `tests/` | **High** | ✅ Implemented |
 
 ---
 

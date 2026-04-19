@@ -78,69 +78,82 @@ ClawGuard operates as two parallel defense pipelines unified under a single Open
 
 ## Component Inventory
 
-### OpenClaw Layer
+### OpenClaw Layer (in `skill/`)
 
-| Component | Role | Source |
-|-----------|------|--------|
-| `clawguard/` skill directory | Packaged OpenClaw skill with SKILL.md + handler | New |
-| Hook registrar | Intercepts all tool calls that ingest outside content | New |
-| Skill config | Per-node configuration (protected contracts, alert thresholds) | New |
+| Component | Role | File |
+|-----------|------|------|
+| Skill manifest | SKILL.md declares hooks and dependencies | `skill/SKILL.md` |
+| Hook registrar | Intercepts pre_tool calls from OpenClaw | `skill/handler.py` + `skill/hook_registrar.py` |
+| Skill API | FastAPI dashboard and admin endpoints | `skill/api.py` |
+| Config loader | Per-node configuration and secrets | `skill/config/` |
+| Event storage | SQLite audit log for all verdicts | `skill/db.py` |
 
-### Pipeline A — Content Defense
+### Pipeline A — Content Defense (in `detector/` + `skill/detectors/`)
 
-| Component | Role | Source |
-|-----------|------|--------|
-| Content Extractor | Tesseract OCR, Whisper ASR, pdfplumber, PIL metadata | New |
-| Rule Layer | 30+ regex patterns for known injection signatures | New |
-| Classifier | Fine-tuned DistilBERT on prompt injection dataset | New |
-| LLM Judge | GPT-4o-mini / Claude Haiku for ambiguous verdicts | New |
-| Verdict Builder | Aggregates all three layers into `{verdict, confidence, reasons}` | New |
+| Component | Role | File |
+|-----------|------|------|
+| Content Extractor | OCR, ASR, PDF parse, HTML strip | `extractor/` (text, image, pdf, audio, router) |
+| Rule Layer | 30+ regex patterns for injection signatures | `detector/rules.py` |
+| ML Classifier | DeBERTa-v3 prompt injection detector | `detector/classifier.py` |
+| LLM Judge | GPT-4o-mini / Claude for ambiguous cases | `detector/llm_judge.py` |
+| Verdict Aggregator | Combines all layers | `detector/verdict.py` + `skill/detectors/pipeline.py` |
 
-### Pipeline B — On-Chain Defense
+### Pipeline B — On-Chain Defense (in `blockchain/`)
 
-| Component | Role | Source |
-|-----------|------|--------|
-| Mempool Monitor | Alchemy WS stream, filtered by protected contract address | SENTINEL |
-| Feature Extractor | tx_features.py: loan amount, price deviation, selector, gas | SENTINEL |
-| IsolationForest | Unsupervised anomaly scorer for individual transactions | SENTINEL |
-| LSTM Sequence Detector | 2-layer PyTorch, classifies per-address tx windows | SENTINEL |
-| State Machine | 4-state confidence machine (IDLE → CONFIRMED) | SENTINEL |
-| Preemptive Strike | Fires PauseController before attacker tx mines | SENTINEL |
+| Component | Role | File |
+|-----------|------|------|
+| Mempool Monitor | Alchemy WS stream, filtered by protected contracts | `blockchain/mempool_monitor.py` |
+| Feature Extractor | tx_features: loan amount, price deviation, selector, gas | `blockchain/on_chain_detection.py` |
+| IsolationForest | Unsupervised anomaly scorer for individual transactions | `blockchain/on_chain_detection.py` |
+| LSTM Sequence Detector | 2-layer PyTorch, classifies per-address tx windows | `blockchain/on_chain_detection.py` |
+| State Machine | 4-state confidence machine (IDLE → CONFIRMED) | `blockchain/on_chain_detection.py` |
+| Preemptive Strike | Fires PauseController before attacker tx mines | `blockchain/preemptive_strike.py` |
+| Async RPC Client | JSON-RPC transport for chain interactions | `blockchain/async_client.py` |
 
-### Shared Infrastructure
+### Shared Infrastructure (on-chain)
 
-| Component | Role | Source |
-|-----------|------|--------|
-| Redis Streams | Event bus between all internal services | SENTINEL |
-| ThreatRegistry.sol | On-chain hash store for known attacks | SENTINEL (adapted) |
-| DefenseProtocol.sol | On-chain store for published defense updates (rules + model deltas) | New |
-| ConsensusVoting.sol | K-of-N quorum for validating defense updates before propagation | SENTINEL (adapted) |
-| Federation Coordinator | Aggregates node verdicts, confirms quorum | SENTINEL |
+| Component | Role | File |
+|-----------|------|------|
+| ThreatRegistry | On-chain hash store for known attacks | `contracts/src/ThreatRegistry.sol` |
+| DefenseProtocol | On-chain store for published defense updates | `contracts/src/DefenseProtocol.sol` |
+| ConsensusVoting | K-of-N quorum for validating defense updates | `contracts/src/ConsensusVoting.sol` |
+| PauseController | Emergency pause mechanism for protected protocols | `contracts/src/PauseController.sol` |
 
-### Learning Loop
+### Learning Loop (in `learning/`)
 
-| Component | Role | Source |
-|-----------|------|--------|
-| Red Agent | Bayesian GP optimizer, generates attack variations | SENTINEL |
-| Blue Agent (MLP) | 5→8→4→1 neural net, trains against variations via backprop | SENTINEL |
-| Rule Extractor | Converts confirmed variation patterns into new regex rules | New |
-| Defense Publisher | Packages rules + model delta + ZK proof for on-chain publishing | New |
+| Component | Role | File |
+|-----------|------|------|
+| Red Agent | Bayesian GP optimizer, generates attack variations | `learning/red_agent.py` |
+| Bayesian Optimizer | Gaussian Process optimization for variant search space | `learning/bayesian_opt.py` |
+| Blue Agent (MLP) | 5→8→4→1 neural net, trains via backprop | `learning/blue_agent.py` |
+| Feature Extractor | Attack feature vectors for blue agent training | `learning/features.py` |
+| Rule Extractor | Converts variation patterns into new regex rules | `learning/rule_extractor.py` |
+| Orchestrator | Coordinates red→blue round and orchestrates publishing | `learning/orchestrator.py` |
+| Defense Publisher | Packages rules + model delta + ZK proof | `learning/publisher.py` |
 
-### ZK Layer
+### Network Coordination (in `network/`)
 
-| Component | Role | Source |
-|-----------|------|--------|
-| ScanAttestation guest | RISC Zero guest that proves a scan ran correctly against committed policy | SENTINEL (adapted) |
-| DefenseUpdateCorrectness guest | Proves a defense update was derived from a real caught attack | New |
-| Groth16 Verifier | On-chain verification of both proof types | SENTINEL |
+| Component | Role | File |
+|-----------|------|------|
+| Network Poller | Polls ThreatRegistry and DefenseProtocol for updates | `network/poller.py` |
+| Defense Applier | Applies received defense updates with ZK verification | `network/applier.py` |
+| Threat Cache | Local SQLite cache of known attack hashes | `skill/db.py` |
+
+### ZK Layer (in `zk/`)
+
+| Component | Role | File |
+|-----------|------|------|
+| DefenseUpdateCorrectness circuit | RISC Zero guest proving defense update legitimacy | `zk/guest/defense-update-correctness` |
+| Prover | Groth16 proof generation and caching | `zk/prover.py` |
+| On-chain Verifier | Groth16 verification | `contracts/src/RiscZeroGroth16Verifier.sol` |
 
 ### Frontend
 
-| Component | Role | Source |
-|-----------|------|--------|
-| ClawGuard Dashboard | Live feed: blocked content, threat map, network propagation, quorum status | New (React + shadcn) |
-| Guardian Cards | Per-node status, recent verdicts, model generation | New |
-| Threat Map | Network graph showing attack propagation and node immunity | New |
+| Component | Role | File |
+|-----------|------|------|
+| ClawGuard Dashboard | Live feed: blocked content, threat map, network graph | `frontend/src/` |
+| Guardian Cards | Per-node status, recent verdicts, model generation | `frontend/src/components/` |
+| Threat Visualization | Network graph showing attack propagation | `frontend/src/components/` |
 
 ---
 

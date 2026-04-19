@@ -20,6 +20,11 @@ Set variables before starting the app or tests:
 
 ```bash
 export ANTHROPIC_API_KEY="sk-..."
+# Optional — Gemini judge backend (see `skill/detectors/gemini_judge.py`, not wired to default pipeline)
+# export GEMINI_API_KEY="..."
+# export GEMINI_JUDGE_MODEL="gemini-2.0-flash"
+# Optional — AES-256-GCM key (Base64, 32 bytes) for encrypted defense payloads (`skill/security/protocol_crypto.py`)
+# export CLAWGUARD_PROTOCOL_ENCRYPTION_KEY="..."
 export CLAWGUARD_PRIVATE_KEY="0x..."
 export RPC_URL="https://..."
 export BASE_SEPOLIA_RPC_URL="https://..."

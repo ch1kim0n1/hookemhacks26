@@ -13,13 +13,13 @@ This design means: no central point of failure, no trust required between nodes,
 ### 1. Startup
 
 ```python
-# On ClawGuard skill startup:
+# On ClawGuard skill startup (from skill/handler.py):
 
 # 1. Load config (node identity, protected contracts, thresholds)
-config = load_config("config.yaml")
+config = load_config("skill/config/")
 
 # 2. Pull all known attack hashes from ThreatRegistry
-#    and cache them locally for fast lookup
+#    and cache them locally for fast lookup (skill/chain/threat_registry.py)
 last_synced_index = local_store.get_last_synced_index()
 new_hashes = threat_registry.getAttacksSince(last_synced_index)
 local_cache.add_attack_hashes(new_hashes)
@@ -30,19 +30,18 @@ if latest_update.generation > local_store.get_applied_generation():
     apply_defense_update(latest_update)
 
 # 4. Register for mempool monitoring on protected contracts
+#    (blockchain/mempool_monitor.py)
 mempool_monitor.subscribe(config.protected_contracts)
 
-# 5. Register OpenClaw hooks
+# 5. Register OpenClaw hooks (skill/hook_registrar.py)
 hook_registrar.register_all()
 
-log.info("ClawGuard online", node=config.node_identity,
-         attacks_cached=len(new_hashes),
-         defense_generation=latest_update.generation)
+log.info("ClawGuard online", node=config.node_identity)
 ```
 
 ### 2. Steady-State Operation
 
-Every `poll_interval_seconds` (default: 60), the node:
+Every `poll_interval_seconds` (default: 60), the node runs `network/poller.py`:
 
 ```python
 async def poll_loop():
@@ -68,6 +67,7 @@ async def poll_loop():
 ### 3. Applying a Defense Update
 
 ```python
+# From network/applier.py
 def apply_defense_update(update: DefenseUpdate):
     # 1. Verify the ZK proof (locally, before touching model or rules)
     valid = zk_verifier.verify(
@@ -85,23 +85,19 @@ def apply_defense_update(update: DefenseUpdate):
         return
 
     # 2. Fetch the rules package and model delta
-    #    (stored as IPFS CIDs or calldata depending on size)
     rules = fetch_rules(update.rulesHash)
     delta = fetch_model_delta(update.modelDeltaHash)
 
-    # 3. Apply new rules to local rule layer
+    # 3. Apply new rules to local rule layer (detector/rules.py)
     rule_layer.add_rules(rules)
 
-    # 4. Apply model weight delta
+    # 4. Apply model weight delta (detector/classifier.py)
     classifier.apply_delta(delta)
 
     # 5. Record applied generation
     local_store.set_applied_generation(update.generation)
 
-    log.info("Defense update applied",
-             generation=update.generation,
-             new_rules=len(rules),
-             source_attack=update.sourceAttackHash[:10])
+    log.info("Defense update applied", generation=update.generation)
 ```
 
 ---
