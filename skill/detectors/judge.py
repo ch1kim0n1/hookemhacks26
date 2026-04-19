@@ -85,8 +85,9 @@ def judge(content: str, tool_name: str = "", modality: str = "",
         }
     except Exception as e:
         return {
-            "verdict": "pass",
-            "confidence": 0.0,
-            "reasons": [f"judge error: {e}"],
-            "available": False,
+            "verdict": "suspicious",
+            "confidence": 0.6,
+            "reasons": [f"judge error (fail-closed): {e}"],
+            "available": True,
+            "errored": True,
         }

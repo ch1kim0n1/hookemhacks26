@@ -20,10 +20,9 @@ from typing import Any
 import structlog
 from eth_account import Account
 from eth_utils import function_signature_to_4byte_selector, keccak
+from store.redis_bus import StreamPublisher
 from web3 import Web3
 from web3.exceptions import ContractLogicError
-
-from store.redis_bus import StreamPublisher
 
 from .prover_client import (
     PolicyRuleNotFoundError,

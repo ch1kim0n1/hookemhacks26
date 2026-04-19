@@ -3,8 +3,10 @@
 import asyncio
 import logging
 import os
+import secrets as _stdlib_secrets
 import signal
 import time
+import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
 
@@ -13,6 +15,7 @@ from fastapi import (
     FastAPI,
     File,
     Form,
+    Header,
     HTTPException,
     Query,
     UploadFile,
@@ -24,9 +27,11 @@ from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 
 from skill.config.secrets import get_secret, init_secrets
+from skill.config.settings import settings
+from skill.observability.logging import setup_logging
 
 from . import db
 from .handler import get_chain_client, scan_only
@@ -40,8 +45,8 @@ except ImportError:
         return {}
 
 
+setup_logging()
 logger = logging.getLogger("clawguard.api")
-logging.basicConfig(level=logging.INFO)
 
 _shutdown_event = asyncio.Event()
 _SKILL_MANIFEST_WINDOW_SEC = 60.0
@@ -49,8 +54,10 @@ skill_manifest_rate_state: dict[str, list[float]] = defaultdict(list)
 
 
 def _setup_signal_handlers() -> None:
-    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get(
-        "CLAWGUARD_DISABLE_SIGNAL_HANDLERS"
+    if (
+        os.environ.get("PYTEST_CURRENT_TEST")
+        or os.environ.get("CLAWGUARD_DISABLE_SIGNAL_HANDLERS")
+        or os.environ.get("VERCEL")
     ):
         return
 
@@ -102,9 +109,10 @@ app.add_middleware(
 )
 
 _RATE_WINDOW_SEC = 60.0
-_RATE_MAX = int(os.getenv("API_RATE_LIMIT_PER_MIN", "100"))
-_MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
-_API_TIMEOUT_SEC = float(os.getenv("API_HANDLER_TIMEOUT_SEC", "30.0"))
+_RATE_MAX = settings.api_rate_limit_per_min
+_MAX_UPLOAD_BYTES = settings.max_upload_bytes
+_API_TIMEOUT_SEC = settings.api_handler_timeout_sec
+_METRICS_RATE_MAX = settings.metrics_rate_limit_per_min
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -125,7 +133,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/openapi.json",
             "/redoc",
-            "/metrics",
         ):
             return await call_next(request)
         client = request.client.host if request.client else "unknown"
@@ -133,7 +140,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         window_start = now - self.window_sec
         q = self._hits[client]
         q[:] = [t for t in q if t > window_start]
-        if len(q) >= self.max_per_window:
+        # /metrics gets its own, usually stricter, budget
+        cap = _METRICS_RATE_MAX if path.startswith("/metrics") else self.max_per_window
+        if len(q) >= cap:
             return JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
         q.append(now)
         return await call_next(request)
@@ -142,26 +151,80 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RateLimitMiddleware, max_per_window=_RATE_MAX, window_sec=_RATE_WINDOW_SEC)
 
 
+def _require_admin_token(
+    request: Request,
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+) -> None:
+    """Reject unless the admin bearer is supplied (or auth is disabled)."""
+    if not settings.require_admin_token:
+        return
+    expected = get_secret("ADMIN_API_TOKEN", default="")
+    if not expected:
+        # Fail-closed: no token configured means admin endpoints are locked.
+        raise HTTPException(
+            status_code=503,
+            detail="admin endpoint not configured (set ADMIN_API_TOKEN)",
+        )
+    supplied = x_admin_token or ""
+    if not _stdlib_secrets.compare_digest(supplied, expected):
+        raise HTTPException(status_code=401, detail="admin token required")
+
+
+def _metrics_auth_ok(request: Request) -> bool:
+    if not settings.require_metrics_token:
+        return True
+    expected = get_secret("METRICS_BEARER_TOKEN", default="")
+    if not expected:
+        # Fall back to ADMIN_API_TOKEN if METRICS_BEARER_TOKEN is unset
+        expected = get_secret("ADMIN_API_TOKEN", default="")
+    if not expected:
+        return False
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        token = header.split(" ", 1)[1].strip()
+    else:
+        token = request.headers.get("x-metrics-token", "")
+    if not token:
+        return False
+    return _stdlib_secrets.compare_digest(token, expected)
+
+
 class RequestLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.scope["type"] != "http":
             return await call_next(request)
+        req_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+        request.state.request_id = req_id
         start = time.perf_counter()
         try:
             response = await asyncio.wait_for(call_next(request), timeout=_API_TIMEOUT_SEC)
         except TimeoutError:
-            logger.exception("request_timeout path=%s", request.url.path)
-            return JSONResponse({"detail": "request timeout"}, status_code=504)
+            logger.exception(
+                "request_timeout",
+                extra={"request_id": req_id, "path": request.url.path},
+            )
+            return JSONResponse(
+                {"detail": "request timeout", "request_id": req_id},
+                status_code=504,
+                headers={"X-Request-ID": req_id},
+            )
         except Exception:
-            logger.exception("request_failed path=%s", request.url.path)
+            logger.exception(
+                "request_failed",
+                extra={"request_id": req_id, "path": request.url.path},
+            )
             raise
         ms = (time.perf_counter() - start) * 1000
+        response.headers["X-Request-ID"] = req_id
         logger.info(
-            "%s %s -> %s %.1fms",
-            request.method,
-            request.url.path,
-            response.status_code,
-            ms,
+            "request",
+            extra={
+                "request_id": req_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "latency_ms": round(ms, 1),
+            },
         )
         return response
 
@@ -218,7 +281,11 @@ def _validate_bearer_token(token: str) -> bool:
 
 async def _websocket_auth_ok(websocket: WebSocket, token: str | None) -> bool:
     host = websocket.client.host if websocket.client else ""
-    if host in ("127.0.0.1", "::1", "localhost", "testclient"):
+    # Real loopback always allowed; the fake Starlette "testclient" host is
+    # ONLY allowed when we are actually inside a pytest run (never in prod).
+    if host in ("127.0.0.1", "::1", "localhost"):
+        return True
+    if host == "testclient" and os.environ.get("PYTEST_CURRENT_TEST"):
         return True
     if not token:
         return False
@@ -294,9 +361,15 @@ async def scan_file(file: UploadFile = File(...), tool_name: str = Form("manual"
 
 
 @app.get("/api/detections")
-async def get_detections(limit: int = 50):
-    """Get recent detection logs."""
-    return db.get_recent_detections(limit)
+async def get_detections(limit: int = 50, cursor: int | None = None):
+    """Get recent detection logs. Cursor pagination via ``?cursor=<id>``;
+    the next cursor is returned as the ``X-Next-Cursor`` response header."""
+    rows = db.get_recent_detections(limit, before_id=cursor)
+    # Only emit a cursor when we actually filled the page — a short page is
+    # the terminal page and clients should stop, not loop.
+    next_cursor = rows[-1]["id"] if rows and len(rows) >= limit else None
+    headers = {"X-Next-Cursor": str(next_cursor)} if next_cursor else {}
+    return JSONResponse(rows, headers=headers)
 
 
 @app.get("/api/stats")
@@ -306,9 +379,13 @@ async def get_stats():
 
 
 @app.get("/api/threats")
-async def get_threats(limit: int = 100):
-    """Get cached on-chain threats."""
-    return db.get_all_cached_threats(limit)
+async def get_threats(limit: int = 100, cursor: int | None = None):
+    """Get cached on-chain threats. Cursor is ``cached_at``; next cursor is
+    returned via the ``X-Next-Cursor`` header."""
+    rows = db.get_all_cached_threats(limit, before_cached_at=cursor)
+    next_cursor = rows[-1]["cached_at"] if rows and len(rows) >= limit else None
+    headers = {"X-Next-Cursor": str(next_cursor)} if next_cursor else {}
+    return JSONResponse(rows, headers=headers)
 
 
 @app.post("/api/replay")
@@ -372,9 +449,17 @@ async def audit_skill_alias(req: SkillAuditRequest, request: Request):
 
 
 @app.get("/api/audit")
-async def get_audit(action: str | None = None, limit: int = 100):
-    """Audit log (restrict in production)."""
-    return {"logs": db.get_audit_logs(action, limit)}
+async def get_audit(
+    request: Request,
+    action: str | None = None,
+    limit: int = 100,
+    cursor: int | None = None,
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+):
+    """Audit log — requires ``X-Admin-Token`` (set ``ADMIN_API_TOKEN``)."""
+    _require_admin_token(request, x_admin_token)
+    limit = max(1, min(int(limit), 500))
+    return {"logs": db.get_audit_logs(action, limit, before_id=cursor)}
 
 
 # --- Dashboard-oriented aliases (also exposed under /api/v1) ---
@@ -534,4 +619,41 @@ async def v1_updates(
 
 
 app.include_router(v1)
-app.mount("/metrics", make_asgi_app())
+
+
+_prometheus_asgi = make_asgi_app()
+
+
+@app.get("/metrics")
+async def prometheus_metrics(request: Request):
+    """Prometheus scrape endpoint — requires Bearer or ``X-Metrics-Token``."""
+    if not _metrics_auth_ok(request):
+        return PlainTextResponse("metrics auth required\n", status_code=401)
+    # Hand off to the prometheus_client ASGI app for the actual payload.
+    from starlette.responses import Response
+
+    captured: dict[str, object] = {}
+
+    async def _send(message):  # type: ignore[no-redef]
+        if message["type"] == "http.response.start":
+            captured["status"] = message["status"]
+            captured["headers"] = message.get("headers", [])
+        elif message["type"] == "http.response.body":
+            body_chunks = captured.setdefault("body", bytearray())
+            body_chunks.extend(message.get("body", b""))  # type: ignore[union-attr]
+
+    async def _receive():  # type: ignore[no-redef]
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    await _prometheus_asgi(request.scope, _receive, _send)
+    body_val = captured.get("body") or b""
+    body = bytes(body_val) if isinstance(body_val, (bytes, bytearray)) else b""
+    headers_val = captured.get("headers") or []
+    headers = {
+        h[0].decode() if isinstance(h[0], bytes) else h[0]: h[1].decode()
+        if isinstance(h[1], bytes)
+        else h[1]
+        for h in headers_val
+    }
+    status = int(captured.get("status") or 200)
+    return Response(content=body, status_code=status, headers=headers)

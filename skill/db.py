@@ -59,9 +59,15 @@ def init_db() -> None:
 
 
 def get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH))
+    # NB: SQLite busy_timeout is ms; this is the window the writer will wait
+    # for a competing transaction before returning SQLITE_BUSY. 5s is a sane
+    # default for our workload (single-writer, small reads).
+    conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
@@ -138,18 +144,32 @@ def audit_log(
     conn.close()
 
 
-def get_audit_logs(action: str | None = None, limit: int = 100) -> list[dict]:
+def get_audit_logs(
+    action: str | None = None,
+    limit: int = 100,
+    before_id: int | None = None,
+) -> list[dict]:
+    """Audit log rows newest-first. When ``before_id`` is provided, returns
+    rows with id < before_id (cursor pagination)."""
+    limit = max(1, min(int(limit), 500))
     conn = get_conn()
+    clauses: list[str] = []
+    params: list[object] = []
     if action:
-        rows = conn.execute(
-            "SELECT * FROM audit_log WHERE action = ? ORDER BY timestamp DESC LIMIT ?",
-            (action, limit),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        clauses.append("action = ?")
+        params.append(action)
+    if before_id is not None:
+        clauses.append("id < ?")
+        params.append(int(before_id))
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    params.append(limit)
+    # `where` is built from a fixed, hard-coded set of clauses that only
+    # insert `?` placeholders — not user input. Values are passed via
+    # parameter binding below. Bandit's B608 here is a false positive.
+    rows = conn.execute(
+        f"SELECT * FROM audit_log {where} ORDER BY id DESC LIMIT ?",  # nosec B608
+        tuple(params),
+    ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -208,11 +228,22 @@ def get_detections_after_id(after_id: int, limit: int = 20) -> list[dict]:
     return results
 
 
-def get_recent_detections(limit: int = 50) -> list[dict]:
+def get_recent_detections(
+    limit: int = 50, before_id: int | None = None
+) -> list[dict]:
+    """Recent detections, newest-first. ``before_id`` enables cursor pagination."""
+    limit = max(1, min(int(limit), 500))
     conn = get_conn()
-    rows = conn.execute(
-        "SELECT * FROM detection_log ORDER BY timestamp DESC LIMIT ?", (limit,)
-    ).fetchall()
+    if before_id is not None:
+        rows = conn.execute(
+            "SELECT * FROM detection_log WHERE id < ? ORDER BY id DESC LIMIT ?",
+            (int(before_id), limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM detection_log ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
     conn.close()
     results = []
     for row in rows:
@@ -257,10 +288,21 @@ def get_cached_threat_count() -> int:
     return count
 
 
-def get_all_cached_threats(limit: int = 100) -> list[dict]:
+def get_all_cached_threats(
+    limit: int = 100, before_cached_at: int | None = None
+) -> list[dict]:
+    """Cached threats newest-first. Cursor is ``cached_at`` (unix seconds)."""
+    limit = max(1, min(int(limit), 500))
     conn = get_conn()
-    rows = conn.execute(
-        "SELECT * FROM threat_cache ORDER BY cached_at DESC LIMIT ?", (limit,)
-    ).fetchall()
+    if before_cached_at is not None:
+        rows = conn.execute(
+            "SELECT * FROM threat_cache WHERE cached_at < ? "
+            "ORDER BY cached_at DESC LIMIT ?",
+            (int(before_cached_at), limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM threat_cache ORDER BY cached_at DESC LIMIT ?", (limit,)
+        ).fetchall()
     conn.close()
     return [dict(r) for r in rows]

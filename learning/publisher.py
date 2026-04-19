@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from typing import Any
 
 from skill.config.secrets import get_secret
@@ -176,6 +177,15 @@ def publish_defense_update(
       - `ok=False, error=...`                  when inputs/env are missing
       - `ok=False, queued=True, payload=...`   when web3 is absent (dev)
     """
+    if not proof and not _allow_empty_proof():
+        return {
+            "ok": False,
+            "error": (
+                "refusing to publish defense update with empty ZK proof. "
+                "Set ALLOW_EMPTY_ZK_PROOF=1 to opt-in (dev only)."
+            ),
+        }
+
     payload = build_publish_payload(
         rule_diff_hash=rule_diff_hash,
         model_delta_hash=model_delta_hash,
@@ -268,6 +278,10 @@ def publish_defense_update(
 # ---------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------
+
+
+def _allow_empty_proof() -> bool:
+    return os.environ.get("ALLOW_EMPTY_ZK_PROOF", "").lower() in ("1", "true", "yes")
 
 
 def _as_bytes32(value: bytes) -> bytes:

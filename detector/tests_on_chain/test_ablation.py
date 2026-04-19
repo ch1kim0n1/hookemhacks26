@@ -4,8 +4,6 @@ a model downgrade, or a signal-chain regression makes the detector
 depend on the hardcoded selector flag, this test fails."""
 from __future__ import annotations
 
-import random
-
 from bench.ablation import run_one_side
 
 

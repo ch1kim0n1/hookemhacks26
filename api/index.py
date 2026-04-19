@@ -1,63 +1,32 @@
-"""Vercel serverless handler — individual endpoint approach."""
+"""Vercel serverless entrypoint.
 
-import json
+Exposes the full :mod:`skill.api` FastAPI application under the Vercel Python
+runtime (ASGI auto-detected). This gives us full feature parity with the
+long-running server — same routes, same middleware, same detection pipeline —
+instead of maintaining a second, dumbed-down HTTP handler.
+
+Important Vercel-specific notes:
+
+* SQLite lives in ``/tmp/clawguard.db`` (ephemeral). That's already handled by
+  :mod:`skill.db_path`.
+* Signal handlers / graceful-shutdown plumbing are skipped when the
+  ``VERCEL`` env var is set (see :mod:`skill.api`).
+* We set ``CLAWGUARD_DISABLE_SIGNAL_HANDLERS`` defensively for older envs.
+"""
+
+import os
 import sys
-from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
-# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from skill import db
-from skill.handler import scan_only
+os.environ.setdefault("CLAWGUARD_DISABLE_SIGNAL_HANDLERS", "1")
 
-db.init_db()
+# Import after sys.path + env setup so skill.api sees them.
+from skill.api import app
 
+# Vercel's Python runtime looks for an ASGI callable named ``app`` or
+# ``handler``. Export both to be explicit.
+handler = app
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        path = self.path.split("?")[0]
-        if path == "/api/health":
-            self._json({"status": "ok"})
-        elif path.startswith("/api/detections"):
-            self._json(db.get_recent_detections(50))
-        elif path.startswith("/api/stats"):
-            self._json(db.get_stats())
-        elif path.startswith("/api/threats"):
-            self._json(db.get_all_cached_threats(100))
-        else:
-            self._json({"error": "not found"}, 404)
-
-    def do_POST(self):
-        length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length)
-
-        path = self.path.split("?")[0]
-        if path in ("/api/scan", "/api/replay"):
-            try:
-                data = json.loads(body)
-                content = data.get("content", "")
-                tool_name = data.get("tool_name", "manual")
-                result = scan_only(content, tool_name=tool_name)
-                self._json(result)
-            except Exception as e:
-                self._json({"error": str(e)}, 500)
-        else:
-            self._json({"error": "not found"}, 404)
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self._cors_headers()
-        self.end_headers()
-
-    def _json(self, data, status=200):
-        self.send_response(status)
-        self._cors_headers()
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(data, default=str).encode())
-
-    def _cors_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+__all__ = ["app", "handler"]

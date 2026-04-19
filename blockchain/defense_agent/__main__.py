@@ -22,11 +22,10 @@ import redis.asyncio as redis
 import structlog
 from aiohttp import web
 from eth_account import Account
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
 from eth_utils import function_signature_to_4byte_selector, keccak
-from web3 import Web3
-
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from store.redis_bus import StreamConsumer, StreamPublisher
+from web3 import Web3
 
 from .approval_gate import ApprovalGate, approval_required
 from .constraint_failure import run_constraint_failure_flow
@@ -71,7 +70,6 @@ PATTERN_TO_PRIMITIVE = {
 }
 
 from .classifier_features import (  # noqa: E402  — keep near usage
-    CLASSIFIER_FEATURE_NAMES,
     build_classifier_features,
 )
 

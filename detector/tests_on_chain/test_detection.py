@@ -1,6 +1,5 @@
 """Detection engine unit tests."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

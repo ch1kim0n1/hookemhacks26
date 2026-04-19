@@ -1,5 +1,4 @@
 """Tests for MLP sequence detector."""
-import pytest
 from detection_engine.sequence_detector import SequenceDetector
 
 

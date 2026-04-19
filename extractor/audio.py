@@ -1,7 +1,6 @@
 """Extract text from audio using OpenAI Whisper."""
 
 import tempfile
-from pathlib import Path
 
 try:
     import whisper

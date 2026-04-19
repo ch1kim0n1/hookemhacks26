@@ -31,10 +31,9 @@ def extract_image(image_path: str | bytes, use_vision: bool = True) -> dict:
     manifest = []
     texts = []
 
-    if isinstance(image_path, str):
-        image_bytes = Path(image_path).read_bytes()
-    else:
-        image_bytes = image_path
+    image_bytes = (
+        Path(image_path).read_bytes() if isinstance(image_path, str) else image_path
+    )
 
     # --- Tesseract OCR pass ---
     if HAS_TESSERACT:

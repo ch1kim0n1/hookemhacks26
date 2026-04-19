@@ -25,10 +25,9 @@ def extract_pdf(pdf_path: str | bytes) -> dict:
     manifest = []
     texts = []
 
-    if isinstance(pdf_path, str):
-        pdf_bytes = Path(pdf_path).read_bytes()
-    else:
-        pdf_bytes = pdf_path
+    pdf_bytes = (
+        Path(pdf_path).read_bytes() if isinstance(pdf_path, str) else pdf_path
+    )
 
     # --- pdfplumber: visible/rendered text ---
     if HAS_PDFPLUMBER:

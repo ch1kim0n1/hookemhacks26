@@ -37,6 +37,7 @@ dev = [
     "httpx>=0.27.0",
     "ruff>=0.8.0",
     "bandit>=1.8.0",
+    "mypy>=1.11.0",
     "pytest-asyncio>=0.24.0",
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
@@ -49,10 +50,30 @@ local = ["transformers>=5.5.4", "torch>=2.0.0", "web3>=7.0.0", "pytesseract>=0.3
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
-# Only ship the `skill` package; the repo has other top-level dirs that must not be installed.
+# Ship all the runtime Python packages in the repo. The root `api/` package is
+# Vercel-only and intentionally excluded; `contracts/`, `dashboard/`, `demo/`,
+# `docs/`, `infra/` are not Python.
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["skill*", "learning*", "network*", "zk*"]
+include = [
+    "skill*",
+    "learning*",
+    "network*",
+    "zk*",
+    "detector*",
+    "extractor*",
+    "blockchain*",
+    "store*",
+]
+exclude = [
+    "tests*",
+    "dashboard*",
+    "contracts*",
+    "demo*",
+    "docs*",
+    "infra*",
+    ".worktrees*",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -66,3 +87,67 @@ testpaths = [
     "zk/tests",
 ]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    ".worktrees",
+    "dashboard",
+    "contracts",
+    "public",
+    ".venv",
+    "**/__pycache__",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP", "SIM", "RUF"]
+ignore = [
+    "E501",   # handled by formatter
+    "B008",   # FastAPI uses function-call defaults (Depends/Query/File/Form)
+    "SIM105", # `contextlib.suppress` is noisier than try/except pass here
+    "RUF003", # Unicode in comments (en-dash) is intentional
+    "RUF012", # dataclass field mutability — noisy on legacy dataclasses
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["B", "SIM", "F401"]
+"**/tests_on_chain/**" = ["B", "SIM", "F401"]
+"skill/migrations/versions/*.py" = ["E501"]
+"detector/bench/**" = ["B905", "RUF046", "E402"]  # research scripts
+"blockchain/defense_agent/**" = ["I001"]  # structlog import ordering handled elsewhere
+"zk/prover_host.py" = ["E402"]
+
+[tool.bandit]
+exclude_dirs = [
+    ".worktrees",
+    "dashboard",
+    "contracts",
+    "public",
+    ".venv",
+    "tests",
+    "skill/tests",
+    "learning/tests",
+    "network/tests",
+    "blockchain/tests",
+    "zk/tests",
+]
+skips = ["B101"]  # assert_used — legitimate in init paths / typed asserts
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+exclude = [
+    "\\.worktrees",
+    "contracts",
+    "dashboard",
+    "public",
+    "\\.venv",
+]

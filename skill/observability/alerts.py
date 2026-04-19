@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
+import time
 from enum import StrEnum
 
 import httpx
@@ -11,6 +13,24 @@ import httpx
 from skill.config.secrets import get_secret
 
 logger = logging.getLogger(__name__)
+
+# TTL dedupe — don't spam identical alerts (key: "<title>|<severity>").
+_DEDUPE_TTL_SEC = 300.0
+_last_fire: dict[str, float] = {}
+
+
+def _should_fire(key: str) -> bool:
+    now = time.monotonic()
+    last = _last_fire.get(key, 0.0)
+    if now - last < _DEDUPE_TTL_SEC:
+        return False
+    _last_fire[key] = now
+    return True
+
+
+def reset_dedupe() -> None:
+    """Clear the dedupe state — intended for tests only."""
+    _last_fire.clear()
 
 
 class AlertSeverity(StrEnum):
@@ -29,7 +49,12 @@ class AlertDispatcher:
         message: str,
         severity: AlertSeverity = AlertSeverity.WARNING,
         tags: dict[str, str] | None = None,
+        *,
+        dedupe: bool = True,
     ) -> bool:
+        if dedupe and not _should_fire(f"{title}|{severity.value}"):
+            logger.debug("Alert deduped: %s (%s)", title, severity.value)
+            return False
         success = False
         if self.slack_webhook:
             ok = await self._send_slack(title, message, severity, tags)
@@ -113,15 +138,33 @@ def alert_sync(
     severity: AlertSeverity = AlertSeverity.WARNING,
     tags: dict[str, str] | None = None,
 ) -> bool:
-    """Send alert from synchronous code (e.g. learning loop)."""
+    """Send alert from synchronous code.
 
-    def _run() -> bool:
-        return asyncio.run(alert(title, message, severity, tags))
+    Works from both pure-sync contexts (e.g. a CLI / learning loop) and from
+    inside threads created by an async framework. When a running loop is
+    detected we dispatch to a short-lived worker thread so we never silently
+    drop the alert.
+    """
+
+    def _run_in_thread() -> bool:
+        result: dict[str, bool] = {"ok": False}
+
+        def _target() -> None:
+            try:
+                result["ok"] = asyncio.run(alert(title, message, severity, tags))
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error("alert_sync worker failed: %s", exc)
+
+        t = threading.Thread(target=_target, name="alert-sync-worker", daemon=True)
+        t.start()
+        t.join(timeout=15.0)
+        if t.is_alive():
+            logger.warning("alert_sync worker did not complete within timeout")
+            return False
+        return result["ok"]
 
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return _run()
-    else:
-        logger.debug("alert_sync skipped inside running loop: %s", title)
-        return False
+        return asyncio.run(alert(title, message, severity, tags))
+    return _run_in_thread()

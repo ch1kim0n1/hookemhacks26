@@ -1,6 +1,6 @@
 """Async JSON-RPC client."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -60,3 +60,68 @@ async def test_async_rpc_timeout():
         async with AsyncRPCClient("http://localhost:8545", timeout=1.0) as client:
             with pytest.raises(httpx.TimeoutException):
                 await client.call("eth_blockNumber")
+
+
+# --- Alert severity + dedupe ---------------------------------------------
+
+
+def test_critical_marker_classification():
+    from blockchain.async_client import _is_critical_rpc_error
+
+    assert _is_critical_rpc_error("connection refused by peer")
+    assert _is_critical_rpc_error("Temporary failure in name resolution")
+    assert _is_critical_rpc_error("SSL handshake failed")
+    # Typical RPC-level errors are NOT critical — they are warnings.
+    assert not _is_critical_rpc_error("insufficient funds for gas")
+    assert not _is_critical_rpc_error("invalid method eth_foo")
+
+
+def test_alert_dedupe_ttl():
+    from blockchain import async_client as ac
+
+    ac._alert_last_fire.clear()
+    key = "eth_call:warning"
+    assert ac._alert_should_fire(key) is True
+    # Second call within TTL must be suppressed.
+    assert ac._alert_should_fire(key) is False
+    # Clear and confirm it re-fires.
+    ac._alert_last_fire.clear()
+    assert ac._alert_should_fire(key) is True
+
+
+@pytest.mark.asyncio
+async def test_generic_rpc_error_is_warning(monkeypatch):
+    """eth_call revert => WARNING, not CRITICAL."""
+    from blockchain import async_client as ac
+    from skill.observability import alerts as alerts_mod
+
+    ac._alert_last_fire.clear()
+    seen: list[dict] = []
+
+    async def _fake_alert(title, message, severity=None, tags=None):
+        seen.append({"severity": severity, "message": message})
+        return True
+
+    monkeypatch.setattr(alerts_mod, "alert", _fake_alert)
+    monkeypatch.setattr("blockchain.async_client._alert_should_fire", lambda *a, **kw: True)
+    await ac._maybe_alert_rpc_failure("eth_call", "execution reverted: ERC20 zero balance")
+    assert seen, "alert should be sent"
+    assert seen[-1]["severity"] == alerts_mod.AlertSeverity.WARNING
+
+
+@pytest.mark.asyncio
+async def test_connection_refused_is_critical(monkeypatch):
+    from blockchain import async_client as ac
+    from skill.observability import alerts as alerts_mod
+
+    ac._alert_last_fire.clear()
+    seen: list[dict] = []
+
+    async def _fake_alert(title, message, severity=None, tags=None):
+        seen.append({"severity": severity})
+        return True
+
+    monkeypatch.setattr(alerts_mod, "alert", _fake_alert)
+    monkeypatch.setattr("blockchain.async_client._alert_should_fire", lambda *a, **kw: True)
+    await ac._maybe_alert_rpc_failure("eth_call", "connection refused")
+    assert seen[-1]["severity"] == alerts_mod.AlertSeverity.CRITICAL

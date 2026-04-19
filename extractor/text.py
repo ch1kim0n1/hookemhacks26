@@ -1,13 +1,10 @@
 """Extract text from HTML, email (.eml), and plain text with hidden-element detection."""
 
-import re
 import email
+import re
 from email import policy
-from html.parser import HTMLParser
-from io import StringIO
 
 from bs4 import BeautifulSoup
-
 
 # Zero-width characters to flag
 ZERO_WIDTH_CHARS = {

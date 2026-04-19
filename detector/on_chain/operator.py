@@ -16,8 +16,7 @@ from __future__ import annotations
 
 import hashlib
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from .anomaly_scorer import AnomalyScorer
 from .sequence_detector import SequenceDetector
@@ -111,7 +110,7 @@ class Operator:
         self.tx_history: dict[str, deque] = {}
         self._history_window = history_window
         self._warmed = False
-        self._model_hash: Optional[str] = None
+        self._model_hash: str | None = None
 
     # ──────────────────────────────────────────────────────────────────
     # lifecycle
@@ -176,7 +175,7 @@ class Operator:
         price_deviation_getter,
         victim_protocol: str = "",
         observed_at: str = "",
-    ) -> Optional[OperatorVerdict]:
+    ) -> OperatorVerdict | None:
         """Feed one pending tx through this operator's pipeline.
 
         Returns an `OperatorVerdict` only when the result is *publishable* —

@@ -3,11 +3,15 @@ line-length = 100
 
 extend-exclude = [
     ".venv",
+    ".worktrees",
     "zk/target",
     "contracts/out",
     "contracts/cache",
     "contracts/lib",
+    "dashboard",
     "dashboard/node_modules",
+    "public",
+    "**/__pycache__",
 ]
 
 [lint]
@@ -18,15 +22,26 @@ select = [
     "I",   # isort
     "B",   # flake8-bugbear
     "UP",  # pyupgrade
+    "SIM", # flake8-simplify
     "RUF", # ruff-specific
 ]
 ignore = [
     "E501",  # line-too-long handled by formatter
-    "B008",  # function call in defaults (FastAPI Depends, etc.)
+    "B008",  # FastAPI Depends/Query/File/Form defaults
+    "SIM105",# try/except pass is clearer than contextlib.suppress for us
+    "RUF001",# ambiguous-unicode in strings — intentional (pipe-wide category labels)
+    "RUF002",# same, docstrings
+    "RUF003",# same, comments (en-dashes are fine)
+    "RUF012",# mutable class attrs in dataclasses — noisy on legacy dataclasses
 ]
 
 [lint.per-file-ignores]
-"**/tests/**" = ["B011"]
+"**/tests/**" = ["B", "SIM", "F401", "B011"]
+"**/tests_on_chain/**" = ["B", "SIM", "F401"]
+"skill/migrations/versions/*.py" = ["E501"]
+"detector/bench/**" = ["B905", "RUF046", "E402"]
+"blockchain/defense_agent/**" = ["I001"]
+"zk/prover_host.py" = ["E402"]
 
 [format]
 quote-style = "double"

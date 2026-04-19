@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import pytest
-
 from detection_engine.operator import DEFAULT_ROSTER, Operator
-
 
 ATTACKER = "0x0116686e2291dbd5e317f47fadbfb43b599786ef"
 VICTIM = "0x9a676e781a523b5d0c0e43731313a708cb607508"

@@ -1,7 +1,6 @@
 """Unit tests for the 4-state detection state machine."""
 import time
 
-import pytest
 from detection_engine.state_machine import DetectionStateMachine
 
 

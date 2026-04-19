@@ -8,9 +8,9 @@ Each suspicious address gets its own state machine instance with a sliding windo
 Confidence accumulates multiplicatively across observations.
 """
 from __future__ import annotations
+
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -21,8 +21,8 @@ class DetectionState:
     first_seen: float = field(default_factory=time.time)
     last_updated: float = field(default_factory=time.time)
     observations: list[dict] = field(default_factory=list)
-    flash_loan_amount: Optional[str] = None
-    price_impact: Optional[float] = None
+    flash_loan_amount: str | None = None
+    price_impact: float | None = None
 
 
 class DetectionStateMachine:

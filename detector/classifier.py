@@ -1,9 +1,8 @@
 """ML classifier using deepset/prompt-injections model for injection detection."""
 
-import os
 
 try:
-    from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+    from transformers import pipeline
     HAS_TRANSFORMERS = True
 except ImportError:
     HAS_TRANSFORMERS = False

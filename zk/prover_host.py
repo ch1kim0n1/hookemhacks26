@@ -1,10 +1,31 @@
-"""HTTP stub for a Groth16 prover worker (replace with snarkjs / rapidsnark in production)."""
+"""HTTP stub for a Groth16 prover worker.
+
+WARNING — THIS IS A MOCK.
+--------------------------
+``_fake_proof`` returns a deterministic SHA-256 of the public inputs dressed
+up as a Groth16 proof. It is **cryptographically worthless**. It exists so
+the rest of the pipeline (learning → publisher → DefenseProtocol) can be
+exercised end-to-end in a demo without a live RISC Zero / snarkjs prover.
+
+Before using this in production you MUST:
+
+* Replace ``_fake_proof`` with a real prover (RISC Zero host, snarkjs,
+  rapidsnark, gnark, …).
+* Deploy a real Groth16 verifier contract and wire ``DefenseProtocol`` to it
+  (``contracts/src/DefenseProtocol.sol`` currently accepts the mock verifier).
+* Refuse empty / missing proofs at the publisher boundary — see
+  ``learning/publisher.py`` which will now fail fast when ``proof`` is empty
+  and ``ALLOW_EMPTY_ZK_PROOF`` is not explicitly set.
+
+See ``zk/INTEGRATION.md`` for the production hand-off plan.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
@@ -12,10 +33,17 @@ from .proof_cache import cache_key, get_cached, set_cached
 
 logger = logging.getLogger(__name__)
 
+# Fail loud if someone imports this without realizing it's a mock.
+if not os.environ.get("CLAWGUARD_ACK_MOCK_PROVER"):
+    logger.warning(
+        "zk.prover_host is a MOCK prover. Proofs it returns are cryptographically "
+        "worthless. Set CLAWGUARD_ACK_MOCK_PROVER=1 to silence this warning."
+    )
+
 
 def _fake_proof(public_inputs: list[str]) -> dict:
     h = hashlib.sha256(json.dumps(public_inputs).encode()).hexdigest()
-    return {"proof": f"0x{h}", "publicSignals": public_inputs}
+    return {"proof": f"0x{h}", "publicSignals": public_inputs, "_mock": True}
 
 
 def prove_with_cache(public_inputs: list[str]) -> dict:

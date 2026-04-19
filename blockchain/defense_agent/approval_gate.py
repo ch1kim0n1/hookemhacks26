@@ -28,7 +28,6 @@ from typing import Any
 
 import redis.asyncio as redis
 import structlog
-
 from store.redis_bus import StreamConsumer, StreamPublisher
 
 log = structlog.get_logger()
@@ -83,8 +82,9 @@ class ApprovalGate:
             consumer_name=f"defense-agent-approval-{os.getpid()}",
             handler=self._on_decision,
         )
-        # StreamConsumer.start() blocks; run in the background.
-        asyncio.create_task(self._consumer.start())
+        # StreamConsumer.start() blocks; run in the background. Stash a
+        # reference so the task is not garbage-collected mid-run.
+        self._consumer_task = asyncio.create_task(self._consumer.start())
         log.info("approval_gate.start", timeout_s=self._timeout)
 
     async def _on_decision(self, _msg_id: str, data: dict[str, Any]) -> None:
@@ -136,7 +136,7 @@ class ApprovalGate:
             log.info("approval_gate.pending", event_id=event_id)
             try:
                 await asyncio.wait_for(waiter.wait(), timeout=self._timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 log.info("approval_gate.timeout", event_id=event_id)
                 return ApprovalDecision(
                     decision="reject",

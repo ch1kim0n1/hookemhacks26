@@ -25,9 +25,9 @@ import redis.asyncio as redis
 import structlog
 from aiohttp import web
 from eth_utils import function_signature_to_4byte_selector
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
-
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from store.redis_bus import StreamConsumer, StreamPublisher
+
 from .operator import DEFAULT_ROSTER, Operator
 
 log = structlog.get_logger()
@@ -80,9 +80,11 @@ async def fetch_oracle_price_deviation(rpc_url: str, oracle_addr: str, tx_value:
             "id": 1,
         }
         timeout = aiohttp.ClientTimeout(total=2)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(rpc_url, json=payload) as resp:
-                data = await resp.json(content_type=None)
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as session,
+            session.post(rpc_url, json=payload) as resp,
+        ):
+            data = await resp.json(content_type=None)
 
         result = data.get("result", "")
         if not result or result == "0x" or len(result) < 130:

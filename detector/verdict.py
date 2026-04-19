@@ -4,9 +4,10 @@ Short-circuits when confident enough."""
 import hashlib
 import re
 
-from .rules import scan as rule_scan, max_severity, RuleMatch
 from .classifier import classify
 from .judge import judge
+from .rules import max_severity
+from .rules import scan as rule_scan
 
 # Thresholds — tuned for hackathon demo, not production
 RULE_BLOCK_THRESHOLD = 0.90      # rule severity >= this -> instant block
@@ -43,7 +44,6 @@ def detect(text: str, tool_name: str = "", modality: str = "") -> dict:
 
     if rule_matches:
         severity = max_severity(rule_matches)
-        match_names = [f"{m.rule_id}:{m.rule_name}" for m in rule_matches]
 
         if severity >= RULE_BLOCK_THRESHOLD:
             reasons = [f"Rule match: {m.rule_name} ({m.matched_text[:60]})" for m in rule_matches]

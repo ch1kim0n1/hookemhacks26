@@ -1,5 +1,4 @@
 """Tests for IsolationForest anomaly scorer."""
-import pytest
 from detection_engine.anomaly_scorer import AnomalyScorer
 
 

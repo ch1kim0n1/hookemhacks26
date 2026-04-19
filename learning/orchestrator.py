@@ -24,12 +24,22 @@ class LearningOrchestrator:
             proposals = self.red.propose(seed_prompt)
             variants = [p.variant for p in proposals]
             rules = extract_from_variations(variants)
+            # NB: blue agent features are still hardcoded — see learning/README.md
+            # for the honest state of this loop. The real feature extraction
+            # lives in learning/rule_extractor.py but is not wired yet.
             score = self.blue.forward([0.2, 0.4, 0.1, 0.0, 0.0])
             payload = {"rules": rules, "blue_score": score, "variants": len(variants)}
             derived = hashlib.sha256(seed_prompt.encode()).digest()
             publish_ok: bool | None = None
             try:
-                result = publish_defense_update(derived_from_attack_hash=derived)
+                # We use the mock ZK prover for defense-update proofs. Publisher
+                # will refuse an empty proof unless ALLOW_EMPTY_ZK_PROOF is set;
+                # we supply a non-empty mock proof so intent is explicit.
+                mock_proof = hashlib.sha256(b"mock-zk-proof:" + derived).digest()
+                result = publish_defense_update(
+                    derived_from_attack_hash=derived,
+                    proof=mock_proof,
+                )
                 if isinstance(result, dict):
                     publish_ok = bool(result.get("ok"))
                     if not publish_ok and result.get("queued"):

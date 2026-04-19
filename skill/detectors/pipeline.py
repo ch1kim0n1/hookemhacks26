@@ -87,6 +87,17 @@ def detect(text: str, tool_name: str = "", modality: str = "") -> dict:
         details["judge"] = judge_result
 
         if judge_result["available"]:
+            if judge_result.get("errored"):
+                reasons.extend(judge_result["reasons"])
+                return _result(
+                    "sanitize",
+                    judge_result["confidence"],
+                    reasons,
+                    text,
+                    content_hash,
+                    "judge",
+                    details,
+                )
             if judge_result["verdict"] == "injection":
                 reasons.extend(judge_result["reasons"])
                 return _result(
