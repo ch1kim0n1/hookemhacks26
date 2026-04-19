@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars. Everything has a sensible default — you only need this
+# file when overriding. Example values shown below.
+#
+# aws_profile = "hookem"
+# aws_region  = "us-east-1"
+# site_name   = "clawguard-landing"
+#
+# When ready for a custom domain (Route53 hosted zone + ACM cert in us-east-1):
+# site_aliases             = ["clawguard.io", "www.clawguard.io"]
+# site_acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxx"
+#
+# Turn on once Bedrock model access is granted for Pillar 1:
+# check_bedrock = true

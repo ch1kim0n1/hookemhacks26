@@ -5,7 +5,10 @@ export const footer = () => html`
     class="px-8 py-6 flex justify-between items-center gap-4 flex-wrap rule-dashed"
     style="font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); letter-spacing: 0.1em; text-transform: uppercase;"
   >
-    <span>© 2026 ClawGuardian · base sepolia</span>
+    <span class="flex items-center gap-2.5">
+      <img src="/logo.png" alt="" width="28" height="28" class="rounded-full object-cover" />
+      © 2026 ClawGuardian · base sepolia
+    </span>
     <nav class="flex gap-5">
       ${[
         { l: 'Problem', href: '#problem' },

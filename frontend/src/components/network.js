@@ -96,11 +96,11 @@ export const network = () => html`
   <section id="network" class="rule-dashed bg-warm">
     <div
       data-network-pin
-      style="height: calc(var(--act-count, 6) * 100svh);"
+      style="height: calc(var(--act-count, 4) * 100svh);"
     >
       <div
-        class="sticky top-0 flex items-center overflow-hidden"
-        style="height: 100svh;"
+        class="sticky flex items-center overflow-hidden"
+        style="top: var(--nav-h); height: calc(100svh - var(--nav-h)); padding-block: 28px;"
       >
         <div class="container-wide w-full">
           <div

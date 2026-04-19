@@ -1,5 +1,5 @@
 import { html } from 'lit-html';
-import { MODALITY_TILES, VITALIK } from '../lib/data.js';
+import { VITALIK } from '../lib/data.js';
 
 // PDF specimen with a hidden white-on-white instruction. Scroll reveal
 // flips the background to highlight and the annotation appears beneath the
@@ -80,20 +80,80 @@ const specimen = () => html`
   </div>
 `;
 
-const tile = (t, i) => html`
+// One-at-a-time modality ticker. Instead of 4 tiles, we cycle through
+// examples beneath the specimen so only one is on screen at a time.
+const MODALITY_ROTATION = [
+  { k: 'PDF', label: 'white-on-white text · 1pt font · XMP metadata' },
+  { k: 'EMAIL', label: 'display:none divs · signature footers · quoted chains' },
+  { k: 'IMAGES', label: 'contrast-adjusted screenshots · OCR-only directives' },
+  { k: 'AUDIO', label: 'voicemails and call recordings · narrated tool calls' },
+];
+
+const modalityTicker = () => html`
   <div
-    class="paper-box p-4 reveal-prep from-bottom"
-    style="--stagger: ${i}; border-radius: 8px;"
+    data-modality-ticker
+    class="paper-box"
+    style="
+      border-radius: 8px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-height: 68px;
+      background: var(--color-paper-3);
+    "
   >
     <span
-      style="font-family: var(--font-mono); font-size: 10px; color: var(--color-accent); letter-spacing: 0.12em; text-transform: uppercase;"
+      style="font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); flex-shrink: 0;"
     >
-      ${t.type}
+      Same pattern in →
     </span>
-    <h4 class="display display-md mt-1.5 mb-1">${t.title}</h4>
-    <p style="font-family: var(--font-sans); font-size: 13.5px; line-height: 1.5; color: var(--color-ink-2); margin: 0;">
-      ${t.body}
-    </p>
+    <div style="position: relative; flex: 1 1 auto; overflow: hidden; height: 40px;">
+      ${MODALITY_ROTATION.map(
+        (m, i) => html`
+          <div
+            data-modality-slide="${i}"
+            style="
+              position: absolute;
+              inset: 0;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              gap: 2px;
+              opacity: ${i === 0 ? 1 : 0};
+              transform: translateY(${i === 0 ? 0 : 12}px);
+              transition: opacity 420ms cubic-bezier(0.16,1,0.3,1), transform 420ms cubic-bezier(0.16,1,0.3,1);
+            "
+          >
+            <span
+              class="display"
+              style="font-size: 17px; line-height: 1.1; color: var(--color-accent); letter-spacing: 0.02em;"
+            >
+              ${m.k}
+            </span>
+            <span
+              style="font-family: var(--font-sans); font-size: 13px; color: var(--color-ink-2); line-height: 1.25;"
+            >
+              ${m.label}
+            </span>
+          </div>
+        `,
+      )}
+    </div>
+    <div class="flex gap-1.5" data-modality-dots style="flex-shrink: 0;">
+      ${MODALITY_ROTATION.map(
+        (_, i) => html`
+          <span
+            data-modality-dot="${i}"
+            style="
+              width: 6px; height: 6px; border-radius: 9999px;
+              background: ${i === 0 ? 'var(--color-accent)' : 'var(--color-line)'};
+              transition: background 320ms ease;
+            "
+          ></span>
+        `,
+      )}
+    </div>
   </div>
 `;
 
@@ -133,9 +193,7 @@ export const problem = () => html`
 
         <div class="reveal-prep scale-in flex flex-col gap-4 justify-center">
           ${specimen()}
-          <div class="grid gap-3" style="grid-template-columns: repeat(2, minmax(0,1fr));">
-            ${MODALITY_TILES.slice(0, 4).map(tile)}
-          </div>
+          ${modalityTicker()}
         </div>
       </div>
     </div>

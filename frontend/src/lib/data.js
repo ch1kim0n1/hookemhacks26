@@ -185,36 +185,30 @@ export const SITES = {
   },
 };
 
-// Scrollytelling acts.
+// Scrollytelling acts. Four beats so scrolling stays tight:
+//   0 attack   — user 1 on fakenews.net, payload in flight
+//   1 detect   — local pipeline catches it, fingerprint minted
+//   2 gossip   — BFS wave radiates through neighbors
+//   3 twin     — second user hits near-identical domain, cache blocks it
 export const ACTS = [
-  {
-    id: "intro",
-    title: "A peer mesh of local agents.",
-    body: "Every ClawGuardian instance runs on the user's own machine. There's no hub, no registry server — peers talk to their neighbors directly.",
-  },
   {
     id: "attack",
     title: "Someone visits fakenews.net.",
-    body: "The page looks normal. Buried in its HTML is a directive crafted to hijack whatever LLM reads it next.",
+    body: "A peer mesh of local agents. No hub, no registry — just neighbors. One of them lands on a page with a hidden directive in the HTML.",
   },
   {
     id: "detect",
     title: "Their local defense catches it.",
-    body: "Rules, then a classifier, then a judge — on their own hardware. A signed fingerprint of the attack is minted locally.",
+    body: "Rules, classifier, judge — all on their own hardware. A signed fingerprint of the attack is minted locally.",
   },
   {
     id: "gossip",
     title: "Neighbors gossip the fingerprint.",
-    body: "Each peer hands the attestation to its 2–3 nearest peers. In seconds the whole mesh has it cached. No one is in charge.",
+    body: "Each peer hands the attestation to 2–3 nearest peers. In seconds the mesh has it cached. No one is in charge.",
   },
   {
     id: "twin",
-    title: "A different user hits fakenewsnetwork.site.",
-    body: "Different domain. Near-identical payload. A human would miss the twin. The cached fingerprint doesn't.",
-  },
-  {
-    id: "blocked",
-    title: "Blocked before the prompt even runs.",
-    body: "Cache hit. The agent never sees the injection. Cost of defense to the second user: one lookup.",
+    title: "Blocked on a near-identical twin.",
+    body: "A different user hits fakenewsnetwork.site. Different domain, same payload shape. Cache hit — agent never sees it.",
   },
 ];

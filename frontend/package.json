@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "amazon-cognito-identity-js": "^6.3.16",
     "gsap": "^3.13.0",
-    "lit-html": "^3.3.1"
+    "lit-html": "^3.3.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
