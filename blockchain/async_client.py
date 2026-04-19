@@ -132,8 +132,8 @@ _alert_last_fire: dict[str, float] = {}
 
 def _alert_should_fire(key: str) -> bool:
     now = time.monotonic()
-    last = _alert_last_fire.get(key, 0.0)
-    if now - last < _ALERT_DEDUPE_TTL_SEC:
+    last = _alert_last_fire.get(key)
+    if last is not None and now - last < _ALERT_DEDUPE_TTL_SEC:
         return False
     _alert_last_fire[key] = now
     return True

@@ -21,8 +21,8 @@ _last_fire: dict[str, float] = {}
 
 def _should_fire(key: str) -> bool:
     now = time.monotonic()
-    last = _last_fire.get(key, 0.0)
-    if now - last < _DEDUPE_TTL_SEC:
+    last = _last_fire.get(key)
+    if last is not None and now - last < _DEDUPE_TTL_SEC:
         return False
     _last_fire[key] = now
     return True
