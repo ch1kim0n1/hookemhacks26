@@ -226,24 +226,30 @@ def get_audit_logs(
     rows with id < before_id (cursor pagination)."""
     limit = max(1, min(int(limit), 500))
     conn = get_conn()
-    clauses: list[str] = []
-    params: list[object] = []
-    if action:
-        clauses.append("action = ?")
-        params.append(action)
-    if before_id is not None:
-        clauses.append("id < ?")
-        params.append(int(before_id))
-    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    params.append(limit)
-    # `where` is built from a fixed, hard-coded set of clauses that only
-    # insert `?` placeholders — not user input. Values are passed via
-    # parameter binding below. Bandit's B608 here is a false positive.
-    rows = conn.execute(
-        f"SELECT * FROM audit_log {where} ORDER BY id DESC LIMIT ?",  # nosec B608
-        tuple(params),
-    ).fetchall()
-    conn.close()
+    try:
+        if action and before_id is not None:
+            rows = conn.execute(
+                "SELECT * FROM audit_log WHERE action = ? AND id < ? "
+                "ORDER BY id DESC LIMIT ?",
+                (action, int(before_id), limit),
+            ).fetchall()
+        elif action:
+            rows = conn.execute(
+                "SELECT * FROM audit_log WHERE action = ? ORDER BY id DESC LIMIT ?",
+                (action, limit),
+            ).fetchall()
+        elif before_id is not None:
+            rows = conn.execute(
+                "SELECT * FROM audit_log WHERE id < ? ORDER BY id DESC LIMIT ?",
+                (int(before_id), limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM audit_log ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+    finally:
+        conn.close()
     return [dict(r) for r in rows]
 
 

@@ -416,7 +416,8 @@ async def start_health_server() -> None:
     app.router.add_get("/metrics", metrics)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", health_port)
+    # Container health/metrics listener — must bind all interfaces in Docker/k8s.
+    site = web.TCPSite(runner, "0.0.0.0", health_port)  # nosec B104
     await site.start()
     log.info("defense-agent.health", port=health_port)
 
