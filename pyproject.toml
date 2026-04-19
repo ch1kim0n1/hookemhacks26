@@ -84,6 +84,8 @@ testpaths = [
     "network/tests",
     "blockchain/tests",
     "tests/contracts",
+    "tests/corpus",
+    "tests/integration",
     "tests/performance",
     "zk/tests",
 ]

@@ -30,7 +30,7 @@ def detect(text: str, tool_name: str = "", modality: str = "") -> dict:
             "details": dict,
         }
     """
-    content_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+    content_hash = hashlib.sha256(text.encode()).hexdigest()
     reasons = []
     details = {}
 

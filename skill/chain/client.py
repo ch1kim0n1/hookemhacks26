@@ -6,6 +6,7 @@ import logging
 import os
 import threading
 
+from ..contracts_config import threat_registry_address
 from ..db import cache_threat, check_threat_cache
 
 logger = logging.getLogger(__name__)
@@ -113,7 +114,9 @@ class ChainClient:
 
     def __init__(self):
         self.rpc_url = os.getenv("BASE_SEPOLIA_RPC_URL", "https://sepolia.base.org")
-        self.registry_address = os.getenv("CLAWGUARD_REGISTRY_ADDRESS", "").strip()
+        self.registry_address = (
+            os.getenv("CLAWGUARD_REGISTRY_ADDRESS", "").strip() or threat_registry_address()
+        )
         self.private_key = os.getenv("CLAWGUARD_PRIVATE_KEY", "").strip()
         self._w3 = None
         self._contract = None
@@ -162,7 +165,10 @@ class ChainClient:
             return None
 
         try:
-            pattern_hash = bytes.fromhex(content_hash.ljust(64, '0')[:64])
+            ch = content_hash.lower().strip().removeprefix("0x")
+            if len(ch) > 64:
+                ch = ch[:64]
+            pattern_hash = bytes.fromhex(ch.ljust(64, "0")[:64])
             account = self.w3.eth.account.from_key(self.private_key)
 
             tx = self.contract.functions.publishAttack(
@@ -177,9 +183,8 @@ class ChainClient:
             signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
 
-            # Cache locally immediately
-            cache_threat(content_hash, category, sample_redacted,
-                         account.address)
+            # Cache locally immediately (canonical 64-char hex key)
+            cache_threat(ch, category, sample_redacted, account.address)
 
             return tx_hash.hex()
         except Exception as e:

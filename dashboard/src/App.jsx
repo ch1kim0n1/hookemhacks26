@@ -685,6 +685,52 @@ function HowItWorks() {
   )
 }
 
+function NodeStatusBanner() {
+  const [health, setHealth] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const r = await fetch(`${API}/health`)
+        const j = await r.json()
+        if (!cancelled) setHealth(j)
+      } catch {
+        if (!cancelled) setHealth({ error: true })
+      }
+    }
+    load()
+    const id = setInterval(load, 30_000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [])
+  if (!health) return null
+  if (health.error) {
+    return (
+      <div className="mt-3 text-xs font-mono text-amber-400/90 bg-amber-950/40 border border-amber-800/50 rounded px-3 py-2">
+        API unreachable — start the ClawGuard backend for live status.
+      </div>
+    )
+  }
+  const zk = health.zk_prover || 'unknown'
+  const reg = health.registry_configured ? 'registry OK' : 'registry unset'
+  const prof = health.deploy_profile || 'unset'
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-mono uppercase tracking-wide">
+      <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+        ZK: <span className={zk.includes('mock') ? 'text-amber-400' : 'text-emerald-400'}>{zk}</span>
+      </span>
+      <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+        {reg} · profile {prof}
+      </span>
+      <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+        API cap {health.rate_limits?.api_per_min ?? '—'}/min
+      </span>
+    </div>
+  )
+}
+
 export default function App() {
   const [tab, setTab] = useState('scan')
 
@@ -699,7 +745,8 @@ export default function App() {
             </div>
             <h1 className="text-xl font-bold tracking-tight">ClawGuard</h1>
           </div>
-          <p className="text-zinc-400 text-sm max-w-xl leading-relaxed">
+          <NodeStatusBanner />
+          <p className="text-zinc-400 text-sm max-w-xl leading-relaxed mt-3">
             Security middleware for AI agents. Defends against prompt injection across text, images, PDFs, and audio.
             Agents share threat intel on-chain — one agent catches an attack, the entire network is protected.
           </p>

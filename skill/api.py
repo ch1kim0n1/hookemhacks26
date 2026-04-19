@@ -194,9 +194,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             else settings.api_rate_limit_per_min
         )
         if len(q) >= cap:
-            return JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
+            resp = JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
+            resp.headers["X-RateLimit-Limit"] = str(cap)
+            resp.headers["X-RateLimit-Remaining"] = "0"
+            resp.headers["Retry-After"] = str(int(self.window_sec))
+            return resp
         q.append(now)
-        return await call_next(request)
+        response = await call_next(request)
+        if hasattr(response, "headers"):
+            remaining = max(0, cap - len(q))
+            response.headers["X-RateLimit-Limit"] = str(cap)
+            response.headers["X-RateLimit-Remaining"] = str(remaining)
+        return response
 
 
 app.add_middleware(RateLimitMiddleware, window_sec=_RATE_WINDOW_SEC)
@@ -475,11 +484,29 @@ async def health():
         threats = db.get_cached_threat_count()
     except Exception:
         threats = 0
+    try:
+        from skill.contracts_config import deployment_profile, threat_registry_address
+        from zk.prover import mode_description
+
+        zk_mode = mode_description()
+        profile = deployment_profile()
+        reg = threat_registry_address()
+    except Exception:
+        zk_mode = "unknown"
+        profile = "unknown"
+        reg = ""
     return {
         "status": "ok",
         "version": _package_version(),
         "chain_available": chain.available,
         "cached_threats": threats,
+        "zk_prover": zk_mode,
+        "deploy_profile": profile,
+        "registry_configured": bool(reg),
+        "rate_limits": {
+            "api_per_min": settings.api_rate_limit_per_min,
+            "metrics_per_min": settings.metrics_rate_limit_per_min,
+        },
     }
 
 
@@ -493,6 +520,18 @@ async def ready():
         migrations_ok = False if head is None else current == head
         at_head = bool(head and current == head)
         db_ok = integrity_ok and migrations_ok
+        warnings: list[str] = []
+        try:
+            from skill.contracts_config import threat_registry_address
+            from zk.prover import mode_description
+
+            if not threat_registry_address():
+                warnings.append("Threat registry address not configured")
+            zk = mode_description()
+            if "mock" in zk.lower():
+                warnings.append(f"ZK prover in non-production mode: {zk}")
+        except Exception as exc:
+            warnings.append(f"extended readiness probe failed: {exc}")
         return {
             "ready": db_ok,
             "database": {"integrity_ok": integrity_ok, "detail": integrity_msg},
@@ -501,6 +540,7 @@ async def ready():
                 "current": current,
                 "at_head": at_head,
             },
+            "warnings": warnings,
         }
 
     payload = await asyncio.to_thread(_probe)

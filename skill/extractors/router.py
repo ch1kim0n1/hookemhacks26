@@ -1,12 +1,22 @@
 """Routes content to the right extractor based on modality."""
 
 import mimetypes
+import re
+import unicodedata
 from pathlib import Path
 
 from .audio import extract_audio
 from .image import extract_image
 from .pdf import extract_pdf
 from .text import extract_text
+
+
+def normalize_extracted_text(text: str) -> str:
+    """NFKC + collapsed whitespace for a single detection surface (issue #92)."""
+    t = unicodedata.normalize("NFKC", text or "")
+    t = re.sub(r"[ \t\r\f\v]+", " ", t)
+    t = re.sub(r"\n{3,}", "\n\n", t)
+    return t.strip()
 
 
 def detect_modality(content: str | bytes, content_type: str | None = None,
@@ -73,8 +83,9 @@ def extract_all(content: str | bytes, content_type: str | None = None,
         ct = content_type or "text/plain"
         result = extract_text(content, ct)
 
+    text_out = normalize_extracted_text(result["text"])
     return {
         "modality": modality,
-        "text": result["text"],
+        "text": text_out,
         "manifest": result["manifest"],
     }

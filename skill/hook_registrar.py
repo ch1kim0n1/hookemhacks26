@@ -7,10 +7,15 @@ never hang if extractors or the ML stack misbehave.
 from __future__ import annotations
 
 import concurrent.futures
+import logging
 import os
+import time
 from typing import Final
 
 from .handler import intercept
+from .latency_budgets import HOOK_INTERCEPT_MS
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMEOUT = float(os.getenv("CLAWGUARD_HOOK_TIMEOUT_SEC", "3.0"))
 
@@ -58,8 +63,18 @@ def intercept_entry(
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
         fut = pool.submit(_run)
+        t0 = time.monotonic()
         try:
-            return fut.result(timeout=timeout_sec)
+            out = fut.result(timeout=timeout_sec)
+            elapsed_ms = (time.monotonic() - t0) * 1000
+            if elapsed_ms > HOOK_INTERCEPT_MS * 0.85:
+                logger.warning(
+                    "hook_intercept slow: tool=%s elapsed_ms=%.0f budget_ms=%s",
+                    tool_name,
+                    elapsed_ms,
+                    HOOK_INTERCEPT_MS,
+                )
+            return out
         except concurrent.futures.TimeoutError:
             return {
                 "action": "pass",

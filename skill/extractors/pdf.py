@@ -103,7 +103,7 @@ def extract_pdf(pdf_path: str | bytes) -> dict:
                     pass
 
             # JavaScript actions (very suspicious in a document)
-            for page in reader.pages:
+            for i, page in enumerate(reader.pages):
                 if "/AA" in page or "/JS" in page:
                     texts.append("[PDF_JAVASCRIPT_DETECTED]")
                     manifest.append({"source": "pdf_javascript", "page": i + 1})

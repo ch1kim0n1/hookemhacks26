@@ -1,5 +1,8 @@
 """ML classifier using deepset/prompt-injections model for injection detection."""
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from transformers import pipeline
@@ -41,6 +44,10 @@ def classify(text: str) -> dict:
     """
     clf = _get_classifier()
     if clf is None:
+        logger.info(
+            "clawguard_fallback: ML classifier unavailable — rules/judge only "
+            "(install package with [ml] extras for transformers+torch)"
+        )
         return {
             "is_injection": False,
             "confidence": 0.0,

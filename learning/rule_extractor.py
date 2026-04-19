@@ -5,6 +5,16 @@ import re
 from collections import Counter
 
 # Very common tokens that make an LCS too generic for auto-blocking.
+# Benign samples for auto-rule precision checks (issue #97).
+DEFAULT_BENIGN_SAMPLES = [
+    "Please summarize this article for a general audience.",
+    "Draft a polite follow-up email confirming Tuesday's meeting time.",
+    "What are three pros and cons of switching to electric vehicles?",
+    "Explain how HTTP caching works using simple terms.",
+    "List action items from the attached meeting notes.",
+]
+
+
 _GENERIC_TOKENS = frozenset(
     {
         "sell",
@@ -52,6 +62,26 @@ def _lcs_is_substantive(phrase: str) -> bool:
     return len(substantive) >= 2
 
 
+def filter_patterns_by_precision(
+    patterns: list[str],
+    benign_samples: list[str] | None = None,
+) -> list[str]:
+    """Drop regex patterns that match clean text (false positives)."""
+    samples = benign_samples if benign_samples is not None else DEFAULT_BENIGN_SAMPLES
+    good: list[str] = []
+    for p in patterns:
+        if not p or len(p) < 4:
+            continue
+        try:
+            rx = re.compile(p, re.I)
+        except re.error:
+            continue
+        if any(rx.search(b) for b in samples):
+            continue
+        good.append(p)
+    return good
+
+
 def suggest_rules_from_variations(variations: list[str]) -> list[str]:
     """Return regex-like patterns for high-frequency tokens."""
     if not variations:
@@ -69,7 +99,7 @@ def suggest_rules_from_variations(variations: list[str]) -> list[str]:
     for w, c in tokens.most_common(5):
         if c >= 2:
             patterns.append(r"\b" + re.escape(w) + r"\b")
-    return list(dict.fromkeys(patterns))
+    return filter_patterns_by_precision(list(dict.fromkeys(patterns)))
 
 
 def extract_from_variations(variations: list[str], min_support: int = 1) -> list[str]:

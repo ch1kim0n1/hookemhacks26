@@ -85,22 +85,24 @@ def _tesseract_multipass(image_bytes: bytes) -> list[dict]:
     text = pytesseract.image_to_string(high_contrast)
     results.append({"pass_name": "high_contrast", "text": text})
 
-    # Pass 4: threshold near-white pixels (catches white-on-white text)
-    # Any pixel between 220-254 becomes black on white — reveals hidden text
-    import numpy as np
-    arr = np.array(img.convert("L"))  # grayscale
-    near_white = (arr > 220) & (arr < 255)
-    threshed = np.where(near_white, 0, 255).astype(np.uint8)
-    thresh_img = Image.fromarray(threshed, mode="L")
-    text = pytesseract.image_to_string(thresh_img)
-    results.append({"pass_name": "near_white_threshold", "text": text})
+    # Pass 4–5: optional numpy-heavy passes (graceful without numpy)
+    try:
+        import numpy as np
 
-    # Pass 5: edge detection (catches steganographic text)
-    edges = img.convert("L").filter(ImageFilter.FIND_EDGES)
-    enhancer = ImageEnhance.Contrast(edges.convert("RGB"))
-    edges_enhanced = enhancer.enhance(3.0)
-    text = pytesseract.image_to_string(edges_enhanced)
-    results.append({"pass_name": "edge_detect", "text": text})
+        arr = np.array(img.convert("L"))
+        near_white = (arr > 220) & (arr < 255)
+        threshed = np.where(near_white, 0, 255).astype(np.uint8)
+        thresh_img = Image.fromarray(threshed, mode="L")
+        text = pytesseract.image_to_string(thresh_img)
+        results.append({"pass_name": "near_white_threshold", "text": text})
+
+        edges = img.convert("L").filter(ImageFilter.FIND_EDGES)
+        enhancer = ImageEnhance.Contrast(edges.convert("RGB"))
+        edges_enhanced = enhancer.enhance(3.0)
+        text = pytesseract.image_to_string(edges_enhanced)
+        results.append({"pass_name": "edge_detect", "text": text})
+    except ImportError:
+        results.append({"pass_name": "numpy_skipped", "text": ""})
 
     return results
 

@@ -12,6 +12,7 @@ _state: dict[str, Any] = {
     "variations_generated": 0,
     "rules_extracted": 0,
     "rounds_completed": 0,
+    "defense_generation": 0,
     "accuracy_trend": [],
     "model_updates": [],
     "last_publish_ok": None,
@@ -30,6 +31,8 @@ def record_round(
         _state["variations_generated"] += variations
         _state["rules_extracted"] += rules
         _state["rounds_completed"] += 1
+        if publish_ok:
+            _state["defense_generation"] = int(_state["defense_generation"]) + 1
         trend: list = _state["accuracy_trend"]
         trend.append(float(blue_score))
         _state["accuracy_trend"] = trend[-24:]

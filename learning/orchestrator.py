@@ -6,10 +6,11 @@ import hashlib
 import logging
 
 from .blue_agent import BlueAgent
+from .features import attack_feature_vector
 from .metrics import record_round
 from .publisher import publish_defense_update
 from .red_agent import RedAgent
-from .rule_extractor import extract_from_variations
+from .rule_extractor import extract_from_variations, suggest_rules_from_variations
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +68,13 @@ class LearningOrchestrator:
 
     def run_round(self, seed_prompt: str) -> dict:
         try:
-            proposals = self.red.propose(seed_prompt)
+            proposals = self.red.propose(seed_prompt, n=8)
             variants = [p.variant for p in proposals]
-            rules = extract_from_variations(variants)
-            # NB: blue agent features are still hardcoded — see learning/README.md
-            # for the honest state of this loop. The real feature extraction
-            # lives in learning/rule_extractor.py but is not wired yet.
-            score = self.blue.forward([0.2, 0.4, 0.1, 0.0, 0.0])
+            rules = list(
+                dict.fromkeys(extract_from_variations(variants) + suggest_rules_from_variations(variants))
+            )
+            feats = attack_feature_vector(seed_prompt, variants)
+            score = self.blue.forward(feats)
             payload = {"rules": rules, "blue_score": score, "variants": len(variants)}
             derived = hashlib.sha256(seed_prompt.encode()).digest()
             # Derive hashes that feed the ZK circuit — small, stable, demo-safe.

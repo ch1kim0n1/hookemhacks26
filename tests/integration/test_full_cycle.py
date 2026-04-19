@@ -150,7 +150,7 @@ def test_full_attack_learn_propagate_cycle(tmp_path, monkeypatch):
     orch = LearningOrchestrator()
     round_result = orch.run_round(ATTACK_PROMPT)
 
-    assert round_result["variants"] >= 0  # red agent may return 0 in stub mode
+    assert round_result["variants"] >= 1, "red agent should emit at least one variant"
     assert round_result["publish_ok"] is True
     assert round_result.get("zk_mode") in {"real", "fallback"}
     assert len(publish_calls) == 1

@@ -28,7 +28,7 @@ CLASSIFIER_SUSPICIOUS_THRESHOLD = 0.60
 
 def detect(text: str, tool_name: str = "", modality: str = "") -> dict:
     """Run the three-layer detection pipeline."""
-    content_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+    content_hash = hashlib.sha256(text.encode()).hexdigest()
     reasons = []
     details = {}
 

@@ -139,11 +139,27 @@ def cache_threat(
 
 
 def check_threat_cache(pattern_hash: str) -> dict | None:
+    """Match full 64-char SHA-256 hex, legacy 16-char prefix keys, or on-chain rows."""
+    key = pattern_hash.lower().strip().removeprefix("0x")
+    if not key:
+        return None
+    if len(key) > 64:
+        key = key[:64]
     conn = get_conn()
     try:
         row = conn.execute(
-            "SELECT * FROM threat_cache WHERE pattern_hash = ?", (pattern_hash,)
+            "SELECT * FROM threat_cache WHERE pattern_hash = ?", (key,)
         ).fetchone()
+        if not row and len(key) == 64:
+            row = conn.execute(
+                "SELECT * FROM threat_cache WHERE pattern_hash = ?", (key[:16],)
+            ).fetchone()
+        if not row and len(key) == 16:
+            row = conn.execute(
+                "SELECT * FROM threat_cache WHERE length(pattern_hash) = 64 "
+                "AND substr(pattern_hash, 1, 16) = ? LIMIT 1",
+                (key,),
+            ).fetchone()
         try:
             from skill.observability import metrics as prom
 

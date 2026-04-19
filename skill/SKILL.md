@@ -36,6 +36,8 @@ requires_env:
   - CLAWGUARD_PRIVATE_KEY
 optional_env:
   - OPENAI_API_KEY
+  - CLAWGUARD_DEPLOY_PROFILE
+  - CLAWGUARD_ADDRESSES_FILE
 ---
 
 # ClawGuard
@@ -43,6 +45,10 @@ optional_env:
 Pre-processing security skill for OpenClaw agents. Intercepts all inbound content
 (email, web, files, images, audio) before the agent processes it. Runs a three-layer
 injection detection pipeline and shares threat intel on-chain.
+
+**Audio scope (issue #95):** `audio_listen` is supported when the optional Whisper /
+`openai-whisper` stack is installed; otherwise extraction degrades gracefully and
+the manifest still lists the hook for forward compatibility.
 
 ## How it works
 

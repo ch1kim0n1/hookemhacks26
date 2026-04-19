@@ -110,8 +110,12 @@ def prove_scan(inputs: dict[str, Any], *, timeout_s: float = 120.0) -> dict[str,
 
     mode = _mode()
     if mode == "mock" or (mode == "auto" and not _binary_available(_SCAN_BIN)):
-        if mode == "auto":
-            logger.info("zk.prove_scan: real binary not found, using mock")
+        if mode == "mock":
+            logger.warning("CLAWGUARD_ZK_MODE=mock — prove_scan uses deterministic MOCK (not Groth16)")
+        elif mode == "auto":
+            logger.warning(
+                "CLAWGUARD_ZK_MODE=auto: prove_scan MOCK fallback (RISC Zero binary missing)"
+            )
         out = _mock_proof("scan-attestation", _pub_inputs_for_cache(inputs))
         set_cached(key, out)
         return out
@@ -134,8 +138,14 @@ def prove_defense_update(inputs: dict[str, Any], *, timeout_s: float = 180.0) ->
 
     mode = _mode()
     if mode == "mock" or (mode == "auto" and not _binary_available(_DEFENSE_BIN)):
-        if mode == "auto":
-            logger.info("zk.prove_defense_update: real binary not found, using mock")
+        if mode == "mock":
+            logger.warning(
+                "CLAWGUARD_ZK_MODE=mock — prove_defense_update uses deterministic MOCK (not Groth16)"
+            )
+        elif mode == "auto":
+            logger.warning(
+                "CLAWGUARD_ZK_MODE=auto: prove_defense_update MOCK fallback (RISC Zero binary missing)"
+            )
         out = _mock_proof("defense-update-correctness", _pub_inputs_for_cache(inputs))
         set_cached(key, out)
         return out

@@ -1,6 +1,7 @@
 """ClawGuard skill handler — intercepts tool calls and runs the security pipeline."""
 
 import hashlib
+import json
 import logging
 import threading
 
@@ -8,8 +9,19 @@ from . import db
 from .chain import ChainClient
 from .detectors import detect
 from .extractors import extract_all
+from .reason_codes import enrich_verdict
+from .threat_identity import content_sha256_hex
 
 logger = logging.getLogger(__name__)
+
+BLOCK_AGENT_MESSAGE = (
+    "[ClawGuard: BLOCKED. Prompt injection or policy violation detected. "
+    "Original task continues without this source.]"
+)
+SANITIZE_ANNOTATION = (
+    "[ClawGuard: SANITIZED — suspicious segments were removed per policy. "
+    "Review assistant output before acting.]\n"
+)
 
 
 def _attest_scan_async(content_hash: str, verdict: dict, modality: str) -> None:
@@ -53,6 +65,29 @@ def _attest_scan_async(content_hash: str, verdict: dict, modality: str) -> None:
             logger.debug("scan_attestation_failed: %s", exc)
 
     threading.Thread(target=_work, name="zk-scan-attest", daemon=True).start()
+
+
+def _audit_tool_intercept(
+    tool_name: str, modality: str, content_hash: str, verdict: dict
+) -> None:
+    """Structured audit row for every hook invocation (issue #108)."""
+    enrich_verdict(verdict)
+    detail = {
+        "tool": tool_name,
+        "modality": modality,
+        "content_hash": content_hash,
+        "verdict": verdict.get("verdict"),
+        "confidence": verdict.get("confidence"),
+        "layer": verdict.get("layer_reached"),
+        "reason_codes": verdict.get("reason_codes"),
+        "reason_family": verdict.get("reason_family"),
+    }
+    db.audit_log(
+        action="tool_intercept",
+        resource=f"content_hash:{content_hash[:24]}",
+        detail=json.dumps(detail, default=str)[:4000],
+        result="success",
+    )
 
 
 def _audit_non_pass(
@@ -114,10 +149,13 @@ def intercept(tool_name: str, content: str | bytes,
         ContentBlocked: if content is blocked and enabled=True
     """
     if not enabled:
+        v = {"verdict": "bypass", "confidence": 0, "reasons": ["ClawGuard disabled"]}
+        enrich_verdict(v)
+        _audit_tool_intercept(tool_name, "bypass", "disabled", v)
         return {
             "action": "pass",
             "content": content if isinstance(content, str) else content.decode("utf-8", errors="replace"),
-            "verdict": {"verdict": "bypass", "confidence": 0, "reasons": ["ClawGuard disabled"]},
+            "verdict": v,
             "extraction": {"modality": "bypass", "text": "", "manifest": []},
         }
 
@@ -126,15 +164,18 @@ def intercept(tool_name: str, content: str | bytes,
     text = extraction["text"]
 
     if not text.strip():
+        v = {"verdict": "pass", "confidence": 0, "reasons": ["no text extracted"]}
+        enrich_verdict(v)
+        _audit_tool_intercept(tool_name, extraction["modality"], "empty", v)
         return {
             "action": "pass",
             "content": content if isinstance(content, str) else content.decode("utf-8", errors="replace"),
-            "verdict": {"verdict": "pass", "confidence": 0, "reasons": ["no text extracted"]},
+            "verdict": v,
             "extraction": extraction,
         }
 
-    # Step 2: Quick hash check against on-chain threat cache
-    content_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+    # Step 2: Quick hash check against on-chain threat cache (canonical SHA-256 hex)
+    content_hash = content_sha256_hex(text)
     chain = get_chain_client()
     cached_threat = chain.check_hash(content_hash)
 
@@ -148,6 +189,9 @@ def intercept(tool_name: str, content: str | bytes,
             "sanitized_content": None,
             "details": {"cached_threat": cached_threat},
         }
+        enrich_verdict(verdict)
+        verdict["agent_message"] = BLOCK_AGENT_MESSAGE
+        _audit_tool_intercept(tool_name, extraction["modality"], content_hash, verdict)
         _audit_non_pass(tool_name, extraction["modality"], content_hash, verdict)
         db.log_detection(tool_name, extraction["modality"], "block", 1.0,
                          verdict["reasons"], content_hash, text[:200],
@@ -156,6 +200,8 @@ def intercept(tool_name: str, content: str | bytes,
 
     # Step 3: Run detection pipeline
     verdict = detect(text, tool_name=tool_name, modality=extraction["modality"])
+    verdict["content_hash"] = content_hash
+    enrich_verdict(verdict)
 
     # Step 4: Log and act
     db.log_detection(
@@ -181,16 +227,20 @@ def intercept(tool_name: str, content: str | bytes,
         # Fire-and-forget ZK attestation — must not delay agent response.
         _attest_scan_async(content_hash, verdict, extraction["modality"])
 
+        verdict["agent_message"] = BLOCK_AGENT_MESSAGE
+        _audit_tool_intercept(tool_name, extraction["modality"], content_hash, verdict)
         raise ContentBlocked(verdict)
 
     if verdict["verdict"] == "sanitize":
+        _audit_tool_intercept(tool_name, extraction["modality"], content_hash, verdict)
         return {
             "action": "sanitize",
-            "content": verdict["sanitized_content"] or text,
+            "content": SANITIZE_ANNOTATION + (verdict["sanitized_content"] or text),
             "verdict": verdict,
             "extraction": extraction,
         }
 
+    _audit_tool_intercept(tool_name, extraction["modality"], content_hash, verdict)
     return {
         "action": "pass",
         "content": content if isinstance(content, str) else content.decode("utf-8", errors="replace"),
@@ -216,7 +266,7 @@ def scan_only(content: str | bytes, content_type: str | None = None,
             "extraction": extraction,
         }
 
-    content_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+    content_hash = content_sha256_hex(text)
 
     # Check cache
     chain = get_chain_client()
@@ -233,6 +283,8 @@ def scan_only(content: str | bytes, content_type: str | None = None,
         }
     else:
         verdict = detect(text, tool_name=tool_name, modality=extraction["modality"])
+        verdict["content_hash"] = content_hash
+    enrich_verdict(verdict)
 
     if verdict["verdict"] != "pass":
         _audit_non_pass(tool_name, extraction["modality"], content_hash, verdict)
@@ -240,10 +292,15 @@ def scan_only(content: str | bytes, content_type: str | None = None,
                      verdict["confidence"], verdict["reasons"],
                      content_hash, text[:200], extraction.get("manifest"))
 
+    out_content = verdict.get("sanitized_content") or (
+        content if isinstance(content, str) else content.decode("utf-8", errors="replace")
+    )
+    if verdict["verdict"] == "sanitize":
+        out_content = SANITIZE_ANNOTATION + (verdict.get("sanitized_content") or text)
+
     return {
         "action": verdict["verdict"],
-        "content": verdict.get("sanitized_content") or (
-            content if isinstance(content, str) else content.decode("utf-8", errors="replace")),
+        "content": out_content,
         "verdict": verdict,
         "extraction": extraction,
     }
