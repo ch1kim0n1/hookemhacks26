@@ -99,11 +99,14 @@ async def lifespan(app: FastAPI):
         logger.info("Slack alerting configured")
     logger.info("Secrets manager initialized; database migrations applied")
 
-    # Pre-warm ZK prover in the background — off by default in tests to
-    # keep them fast. Any failure is non-fatal (prover falls back to mock).
-    if not os.environ.get("PYTEST_CURRENT_TEST") and os.environ.get(
-        "CLAWGUARD_ZK_PREWARM", "1"
-    ) not in ("0", "false", "no"):
+    # Pre-warm ZK prover in the background — off in tests (speed) and on
+    # Vercel serverless (cold-start budget / no background workers).
+    _prewarm_ok = (
+        not os.environ.get("PYTEST_CURRENT_TEST")
+        and not os.environ.get("VERCEL")
+        and os.environ.get("CLAWGUARD_ZK_PREWARM", "1") not in ("0", "false", "no")
+    )
+    if _prewarm_ok:
         try:
             from zk.prover import mode_description, prewarm
 

@@ -1,7 +1,13 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "pip install -r requirements.txt && cd dashboard && npm install",
+  "installCommand": "pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir -e . --no-deps && cd dashboard && npm ci",
   "buildCommand": "cd dashboard && npm run build && mkdir -p ../public && cp -r dist/* ../public/",
+  "functions": {
+    "api/**/*.py": {
+      "excludeFiles": "{.git/**,.worktrees/**,.venv/**,**/__pycache__/**,**/.pytest_cache/**,**/*.pyc,contracts/cache/**,contracts/out/**,contracts/lib/**,dashboard/node_modules/**,detector/bench/**,blockchain/**,network/**,store/**,**/tests/**,**/test_*.py,learning/tests/**,zk/tests/**,demo/**,public/**}"
+    }
+  },
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index.py" },
     { "source": "/metrics", "destination": "/api/index.py" },

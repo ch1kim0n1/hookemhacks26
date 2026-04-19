@@ -1,0 +1,12 @@
+# Keep Vercel uploads and Python function bundles lean (sources live in git;
+# heavy artifacts are rebuilt on the platform).
+.worktrees
+.git
+.venv
+**/__pycache__
+.pytest_cache
+*.db
+contracts/cache
+contracts/out
+contracts/lib
+dashboard/node_modules
