@@ -7,7 +7,8 @@ Use this when running the full ClawGuard demo (issues #65 / playbook).
 - [ ] API up: `uvicorn skill.api:app --reload` (or your process manager)
 - [ ] Dashboard build: `cd dashboard && npm ci && npm run build`
 - [ ] Env: `ANTHROPIC_API_KEY`, optional chain vars in `.env`
-- [ ] Health: `GET /api/health` returns `status: ok`
+- [ ] Liveness: `GET /api/health` returns `status: ok` and a `version` field
+- [ ] Readiness (prod / Docker): `GET /api/ready` returns `200` with `"ready": true`
 
 ## Timing targets (record actuals)
 

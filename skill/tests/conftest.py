@@ -20,3 +20,12 @@ def _reset_alert_dedupe():
     alerts.reset_dedupe()
     yield
     alerts.reset_dedupe()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    from skill import api as api_mod
+
+    api_mod._rate_limit_hits.clear()
+    yield
+    api_mod._rate_limit_hits.clear()

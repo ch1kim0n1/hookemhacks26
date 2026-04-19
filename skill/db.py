@@ -1,10 +1,13 @@
 """SQLite store for local threat cache and detection logs."""
 
+from __future__ import annotations
+
 import json
 import logging
 import re
 import sqlite3
 import time
+from pathlib import Path
 
 from skill.db_path import DB_PATH
 
@@ -56,6 +59,54 @@ def run_migrations() -> None:
 def init_db() -> None:
     """Initialize schema via Alembic (backward-compatible name)."""
     run_migrations()
+
+
+def sqlite_quick_check() -> tuple[bool, str]:
+    """Run ``PRAGMA quick_check`` — fast on-disk integrity probe."""
+    if not DB_PATH.exists():
+        return False, "database file missing"
+    conn = get_conn()
+    try:
+        rows = conn.execute("PRAGMA quick_check").fetchall()
+        if not rows:
+            return False, "no quick_check result"
+        messages = [str(r[0]) for r in rows]
+        if len(messages) == 1 and messages[0].lower() == "ok":
+            return True, "ok"
+        return False, "; ".join(messages[:10])
+    finally:
+        conn.close()
+
+
+def alembic_revision_pair() -> tuple[str | None, str | None]:
+    """Return ``(head_revision, current_revision)`` from the migration scripts
+    and the attached database.
+
+    ``current_revision`` is ``None`` when the DB file is missing or has no
+    Alembic version row yet.
+    """
+    from alembic.config import Config
+    from alembic.runtime.migration import MigrationContext
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import create_engine
+
+    migrations_dir = Path(__file__).resolve().parent / "migrations"
+    cfg = Config()
+    cfg.set_main_option("script_location", str(migrations_dir))
+    script = ScriptDirectory.from_config(cfg)
+    try:
+        head = script.get_current_head()
+    except Exception:
+        head = None
+
+    if not DB_PATH.exists():
+        return head, None
+
+    eng = create_engine(f"sqlite:///{DB_PATH}")
+    with eng.connect() as conn:
+        ctx = MigrationContext.configure(conn)
+        current = ctx.get_current_revision()
+    return head, current
 
 
 def get_conn() -> sqlite3.Connection:

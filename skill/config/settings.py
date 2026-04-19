@@ -57,6 +57,11 @@ class Settings:
     # Extraction caps
     pdf_max_bytes: int = _int("PDF_MAX_BYTES", 25 * 1024 * 1024)
 
+    # Production hardening
+    expose_openapi: bool = _bool("EXPOSE_OPENAPI", True)
+    enable_hsts: bool = _bool("ENABLE_HSTS", False)
+    hsts_max_age_sec: int = _int("HSTS_MAX_AGE_SEC", 31_536_000)
+
 
 settings = Settings()
 

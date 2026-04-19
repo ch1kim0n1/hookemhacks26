@@ -1,4 +1,4 @@
-.PHONY: setup fixtures api dashboard demo contracts clean migrate test-headers
+.PHONY: setup fixtures api dashboard demo contracts clean migrate test-headers quality
 
 # --- Setup ---
 setup:
@@ -79,6 +79,12 @@ migrate:
 	@echo "=== Running database migrations ==="
 	cd $(CURDIR) && uv run python -c "from skill.db import run_migrations; run_migrations()"
 	@echo "Migrations complete"
+
+# --- Static analysis + tests (CI parity) ---
+quality:
+	cd $(CURDIR) && ruff check skill/ api/ detector/ extractor/ blockchain/ learning/ zk/ network/
+	cd $(CURDIR) && bandit -r skill/ detector/ extractor/ blockchain/ learning/ zk/ api/ -ll -q
+	cd $(CURDIR) && pytest -q
 
 # --- Clean ---
 clean:

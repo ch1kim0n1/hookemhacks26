@@ -30,9 +30,14 @@ export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318/v1/traces"
 export OTEL_SERVICE_NAME="clawguard"
 export SKILL_AUDIT_RATE_LIMIT_PER_MIN="10"
+export EXPOSE_OPENAPI="false"        # production: hide interactive OpenAPI
+export ENABLE_HSTS="true"           # only when TLS is terminated in front of the app
+export HSTS_MAX_AGE_SEC="31536000"
 ```
 
 `get_secret` auto-initializes an env-backed manager on first use. The FastAPI app also calls `init_secrets("env")` on startup.
+
+Non-secret toggles such as `EXPOSE_OPENAPI` / `ENABLE_HSTS` are read via `skill.config.settings` (see `skill/config/settings.py`).
 
 ## Future: Vault
 

@@ -84,6 +84,14 @@ Key ones (see `docs/SECRETS.md` for the authoritative list):
 | `SLACK_WEBHOOK_URL` | No | Critical alerts (RPC failures, learning-round errors) |
 | `LOG_FORMAT` | No | `plain` (default) or `json` for structured logs |
 | `CORS_ORIGINS` | No | Comma-separated allowlist for the FastAPI server |
+| `EXPOSE_OPENAPI` | No | Set `false` to hide `/docs`, `/redoc`, and `/openapi.json` in production |
+| `ENABLE_HSTS` | No | Set `true` behind TLS-terminating proxies to emit `Strict-Transport-Security` |
+| `HSTS_MAX_AGE_SEC` | No | Max-age for HSTS (default one year) |
+
+### Health checks
+
+- **`GET /api/health`** — liveness: process is up, cheap snapshot of chain config and cached-threat count (does not start chain polling).
+- **`GET /api/ready`** — readiness: `PRAGMA quick_check` + Alembic at head; returns **503** until the database is migrated and intact. Use this for load balancers and orchestrators; keep **`/api/health`** for simple process probes.
 
 The demo runs without on-chain, without Slack, and without the admin token
 (flip `REQUIRE_ADMIN_TOKEN=false` for local dev). Every optional integration
@@ -153,7 +161,7 @@ What this repo is and isn't, per subsystem:
 | Multimodal extractors (`extractor/`, `skill/extractors/`) | Works | Real OCR / PDF / email / HTML / audio with graceful fallbacks |
 | Threat registry cache (SQLite) | Works | WAL, Alembic migrations, indexes, cursor pagination |
 | Audit log | Works | Admin-gated, filterable, cursor-paginated |
-| FastAPI server (`skill/api.py`) | Works | CSP, rate limits, request IDs, admin/metrics auth, WS auth |
+| FastAPI server (`skill/api.py`) | Works | CSP + security headers, optional HSTS, `/api/ready`, rate limits (per-process; see below), request IDs, admin/metrics auth, WS auth |
 | Vercel serverless (`api/index.py`) | Works | Now a thin re-export of `skill.api:app` (full parity) |
 | On-chain publish — threat registry (`skill/chain/client.py`) | Works when env set | Real web3 writes to Base Sepolia |
 | On-chain publish — defense updates (`learning/publisher.py`) | Works when env set | Real `DefenseProtocol.publishDefenseUpdate` |
@@ -164,6 +172,7 @@ What this repo is and isn't, per subsystem:
 | Prometheus metrics (`/metrics`) | Works | Auth-gated; scrape with bearer token |
 | OpenTelemetry tracing | Works when OTLP set | HTTP exporter |
 | Slack alerting | Works | TTL dedupe, severity-aware, thread-safe `alert_sync` |
+| API rate limiting | Per-process | Keys clients by `X-Forwarded-For` when present; for many replicas, enforce limits at the edge (nginx) or add a shared store (Redis is wired in compose for future use) |
 
 ## Project Structure
 

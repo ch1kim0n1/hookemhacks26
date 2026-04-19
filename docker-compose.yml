@@ -23,6 +23,12 @@ services:
       - "8000:8000"
     environment:
       REDIS_URL: redis://redis:6379
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       redis:
         condition: service_healthy
@@ -35,7 +41,8 @@ services:
     ports:
       - "5175:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus:v2.48.0

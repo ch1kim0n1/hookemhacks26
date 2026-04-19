@@ -31,8 +31,12 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: pytest -v
-      - run: ruff check skill/
-      - run: bandit -r skill/ -ll -q
+      - name: Ruff (all Python packages)
+        run: |
+          ruff check skill/ api/ detector/ extractor/ blockchain/ learning/ zk/ network/
+      - name: Bandit (runtime packages)
+        run: |
+          bandit -r skill/ detector/ extractor/ blockchain/ learning/ zk/ api/ -ll -q
 
   frontend:
     name: Dashboard (npm run build)

@@ -1,6 +1,7 @@
 """FastAPI server exposing ClawGuard endpoints for the dashboard."""
 
 import asyncio
+import hmac
 import logging
 import os
 import secrets as _stdlib_secrets
@@ -34,6 +35,7 @@ from skill.config.settings import settings
 from skill.observability.logging import setup_logging
 
 from . import db
+from .chain import ChainClient
 from .handler import get_chain_client, scan_only
 from .skill_audit import audit_skill_manifest
 
@@ -47,6 +49,16 @@ except ImportError:
 
 setup_logging()
 logger = logging.getLogger("clawguard.api")
+
+
+def _package_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("clawguard")
+    except Exception:
+        return "0.1.0"
+
 
 _shutdown_event = asyncio.Event()
 _SKILL_MANIFEST_WINDOW_SEC = 60.0
@@ -91,7 +103,18 @@ async def lifespan(app: FastAPI):
     await asyncio.sleep(0.2)
 
 
-app = FastAPI(title="ClawGuard API", version="0.1.0", lifespan=lifespan)
+_docs = "/docs" if settings.expose_openapi else None
+_openapi = "/openapi.json" if settings.expose_openapi else None
+_redoc = "/redoc" if settings.expose_openapi else None
+
+app = FastAPI(
+    title="ClawGuard API",
+    version=_package_version(),
+    lifespan=lifespan,
+    docs_url=_docs,
+    openapi_url=_openapi,
+    redoc_url=_redoc,
+)
 
 _cors_raw = get_secret(
     "CORS_ORIGINS",
@@ -109,20 +132,26 @@ app.add_middleware(
 )
 
 _RATE_WINDOW_SEC = 60.0
-_RATE_MAX = settings.api_rate_limit_per_min
 _MAX_UPLOAD_BYTES = settings.max_upload_bytes
 _API_TIMEOUT_SEC = settings.api_handler_timeout_sec
-_METRICS_RATE_MAX = settings.metrics_rate_limit_per_min
+# Module-level hit map so tests can ``clear()`` without reaching into middleware
+# instances (Starlette stacks those internally).
+_rate_limit_hits: dict[str, list[float]] = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Sliding-window-ish rate limiter per client IP."""
 
-    def __init__(self, app, *, max_per_window: int, window_sec: float) -> None:
+    def __init__(self, app, *, window_sec: float) -> None:
         super().__init__(app)
-        self.max_per_window = max_per_window
         self.window_sec = window_sec
-        self._hits: dict[str, list[float]] = defaultdict(list)
 
     async def dispatch(self, request: Request, call_next):
         if request.scope["type"] != "http":
@@ -130,25 +159,30 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path in (
             "/api/health",
+            "/api/ready",
             "/docs",
             "/openapi.json",
             "/redoc",
         ):
             return await call_next(request)
-        client = request.client.host if request.client else "unknown"
+        client = _client_ip(request)
         now = time.monotonic()
         window_start = now - self.window_sec
-        q = self._hits[client]
+        q = _rate_limit_hits[client]
         q[:] = [t for t in q if t > window_start]
-        # /metrics gets its own, usually stricter, budget
-        cap = _METRICS_RATE_MAX if path.startswith("/metrics") else self.max_per_window
+        # Limits are read from settings on each request so tests can monkeypatch.
+        cap = (
+            settings.metrics_rate_limit_per_min
+            if path.startswith("/metrics")
+            else settings.api_rate_limit_per_min
+        )
         if len(q) >= cap:
             return JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
         q.append(now)
         return await call_next(request)
 
 
-app.add_middleware(RateLimitMiddleware, max_per_window=_RATE_MAX, window_sec=_RATE_WINDOW_SEC)
+app.add_middleware(RateLimitMiddleware, window_sec=_RATE_WINDOW_SEC)
 
 
 def _require_admin_token(
@@ -230,7 +264,7 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
 
 
 class CSPMiddleware(BaseHTTPMiddleware):
-    """Content-Security-Policy on HTTP responses."""
+    """Security headers on HTTP responses (CSP + baseline OWASP helpers)."""
 
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
@@ -245,6 +279,13 @@ class CSPMiddleware(BaseHTTPMiddleware):
             "base-uri 'self'; "
             "form-action 'self'"
         )
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if settings.enable_hsts:
+            response.headers["Strict-Transport-Security"] = (
+                f"max-age={settings.hsts_max_age_sec}; includeSubDomains"
+            )
         return response
 
 
@@ -252,15 +293,8 @@ app.add_middleware(RequestLogMiddleware)
 app.add_middleware(CSPMiddleware)
 
 
-def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
 def _skill_manifest_rate_allow(request: Request) -> bool:
-    max_r = int(get_secret("SKILL_AUDIT_RATE_LIMIT_PER_MIN", default="10"))
+    max_r = settings.skill_audit_rate_limit_per_min
     ip = _client_ip(request)
     now = time.monotonic()
     cutoff = now - _SKILL_MANIFEST_WINDOW_SEC
@@ -276,7 +310,10 @@ def _validate_bearer_token(token: str) -> bool:
     expected = get_secret("WS_BEARER_TOKEN", default="")
     if not expected:
         return False
-    return token == expected
+    return hmac.compare_digest(
+        token.encode("utf-8"),
+        expected.encode("utf-8"),
+    )
 
 
 async def _websocket_auth_ok(websocket: WebSocket, token: str | None) -> bool:
@@ -413,12 +450,45 @@ async def poll_chain():
 
 @app.get("/api/health")
 async def health():
-    chain = get_chain_client()
+    """Liveness: process is up. Does not start chain polling."""
+    # Use a fresh ChainClient snapshot — never call get_chain_client() here
+    # (that starts a background poll thread on first use).
+    chain = ChainClient()
+    try:
+        threats = db.get_cached_threat_count()
+    except Exception:
+        threats = 0
     return {
         "status": "ok",
+        "version": _package_version(),
         "chain_available": chain.available,
-        "cached_threats": db.get_cached_threat_count(),
+        "cached_threats": threats,
     }
+
+
+@app.get("/api/ready")
+async def ready():
+    """Readiness: SQLite integrity + Alembic at head. Returns 503 until healthy."""
+
+    def _probe() -> dict:
+        integrity_ok, integrity_msg = db.sqlite_quick_check()
+        head, current = db.alembic_revision_pair()
+        migrations_ok = False if head is None else current == head
+        at_head = bool(head and current == head)
+        db_ok = integrity_ok and migrations_ok
+        return {
+            "ready": db_ok,
+            "database": {"integrity_ok": integrity_ok, "detail": integrity_msg},
+            "migrations": {
+                "head": head,
+                "current": current,
+                "at_head": at_head,
+            },
+        }
+
+    payload = await asyncio.to_thread(_probe)
+    status = 200 if payload["ready"] else 503
+    return JSONResponse(payload, status_code=status)
 
 
 class SkillAuditRequest(BaseModel):

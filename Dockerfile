@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir pip setuptools wheel \
     && pip install --no-cache-dir -e ".[dev]"
 
 EXPOSE 8000
-HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=5 \
-    CMD curl -fsS http://127.0.0.1:8000/api/health || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \
+    CMD curl -fsS http://127.0.0.1:8000/api/ready || exit 1
 
 CMD ["uvicorn", "skill.api:app", "--host", "0.0.0.0", "--port", "8000"]
