@@ -1,43 +1,43 @@
 """Vercel serverless handler — individual endpoint approach."""
 
-import sys
 import json
-from pathlib import Path
+import sys
 from http.server import BaseHTTPRequestHandler
+from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from skill.detectors import detect
-from skill.extractors import extract_all
-from skill.handler import scan_only
 from skill import db
+from skill.handler import scan_only
+
+db.init_db()
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        path = self.path.split('?')[0]
-        if path == '/api/health':
+        path = self.path.split("?")[0]
+        if path == "/api/health":
             self._json({"status": "ok"})
-        elif path.startswith('/api/detections'):
+        elif path.startswith("/api/detections"):
             self._json(db.get_recent_detections(50))
-        elif path.startswith('/api/stats'):
+        elif path.startswith("/api/stats"):
             self._json(db.get_stats())
-        elif path.startswith('/api/threats'):
+        elif path.startswith("/api/threats"):
             self._json(db.get_all_cached_threats(100))
         else:
             self._json({"error": "not found"}, 404)
 
     def do_POST(self):
-        length = int(self.headers.get('Content-Length', 0))
+        length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
 
-        path = self.path.split('?')[0]
-        if path in ('/api/scan', '/api/replay'):
+        path = self.path.split("?")[0]
+        if path in ("/api/scan", "/api/replay"):
             try:
                 data = json.loads(body)
-                content = data.get('content', '')
-                tool_name = data.get('tool_name', 'manual')
+                content = data.get("content", "")
+                tool_name = data.get("tool_name", "manual")
                 result = scan_only(content, tool_name=tool_name)
                 self._json(result)
             except Exception as e:
@@ -53,11 +53,11 @@ class handler(BaseHTTPRequestHandler):
     def _json(self, data, status=200):
         self.send_response(status)
         self._cors_headers()
-        self.send_header('Content-Type', 'application/json')
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(data, default=str).encode())
 
     def _cors_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")

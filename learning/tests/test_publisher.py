@@ -4,6 +4,7 @@ Covers the pure helpers (compute_update_id, build_publish_payload) and
 the degraded-mode behavior of publish_defense_update when web3 / env
 vars are missing — so the test suite runs without an RPC node.
 """
+
 from __future__ import annotations
 
 from learning.publisher import (
@@ -23,7 +24,7 @@ def test_compute_update_id_is_deterministic():
         rule_diff_hash=_thirty_two(0xAA),
         model_delta_hash=_thirty_two(0xBB),
         derived_from_attack_hash=_thirty_two(0xCC),
-        zk_proof=b"\xDE\xAD\xBE\xEF",
+        zk_proof=b"\xde\xad\xbe\xef",
     )
     assert compute_update_id(**args) == compute_update_id(**args)
 
@@ -91,7 +92,12 @@ def test_publish_defense_update_returns_structured_error_without_env(
     monkeypatch,
 ):
     # Strip env vars so the function can't actually send.
-    for v in ("RPC_URL", "DEFENSE_PROTOCOL_ADDRESS", "CLAWGUARD_PRIVATE_KEY"):
+    for v in (
+        "RPC_URL",
+        "BASE_SEPOLIA_RPC_URL",
+        "DEFENSE_PROTOCOL_ADDRESS",
+        "CLAWGUARD_PRIVATE_KEY",
+    ):
         monkeypatch.delenv(v, raising=False)
     result = publish_defense_update(
         rule_diff_hash=_thirty_two(1),
@@ -99,7 +105,7 @@ def test_publish_defense_update_returns_structured_error_without_env(
         derived_from_attack_hash=_thirty_two(3),
         old_policy_hash=_thirty_two(4),
         new_policy_hash=_thirty_two(5),
-        proof=b"\xAA",
+        proof=b"\xaa",
     )
     assert result["ok"] is False
     # Either "web3 not installed" or "addresses missing" — both include payload.

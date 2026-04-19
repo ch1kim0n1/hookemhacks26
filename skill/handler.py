@@ -8,6 +8,21 @@ from .detectors import detect
 from .extractors import extract_all
 
 
+def _audit_non_pass(
+    tool_name: str, modality: str, content_hash: str, verdict: dict
+) -> None:
+    v = verdict.get("verdict")
+    if v == "pass":
+        return
+    action = "attack_blocked" if v == "block" else "attack_sanitized"
+    db.audit_log(
+        action=action,
+        resource=f"content_hash:{content_hash}",
+        detail=f"verdict={v}, modality={modality}, tool={tool_name}",
+        result="success",
+    )
+
+
 class ContentBlocked(Exception):
     """Raised when content is blocked by ClawGuard."""
     def __init__(self, verdict: dict):
@@ -86,6 +101,7 @@ def intercept(tool_name: str, content: str | bytes,
             "sanitized_content": None,
             "details": {"cached_threat": cached_threat},
         }
+        _audit_non_pass(tool_name, extraction["modality"], content_hash, verdict)
         db.log_detection(tool_name, extraction["modality"], "block", 1.0,
                          verdict["reasons"], content_hash, text[:200],
                          extraction.get("manifest"))
@@ -105,6 +121,8 @@ def intercept(tool_name: str, content: str | bytes,
         content_preview=text[:200],
         source_manifest=extraction.get("manifest"),
     )
+    if verdict["verdict"] != "pass":
+        _audit_non_pass(tool_name, extraction["modality"], content_hash, verdict)
 
     if verdict["verdict"] == "block":
         # Publish to chain
@@ -166,6 +184,8 @@ def scan_only(content: str | bytes, content_type: str | None = None,
     else:
         verdict = detect(text, tool_name=tool_name, modality=extraction["modality"])
 
+    if verdict["verdict"] != "pass":
+        _audit_non_pass(tool_name, extraction["modality"], content_hash, verdict)
     db.log_detection(tool_name, extraction["modality"], verdict["verdict"],
                      verdict["confidence"], verdict["reasons"],
                      content_hash, text[:200], extraction.get("manifest"))

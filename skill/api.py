@@ -3,8 +3,10 @@
 import asyncio
 import logging
 import os
+import signal
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 
 from fastapi import (
     APIRouter,
@@ -12,15 +14,19 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
+from skill.config.secrets import get_secret, init_secrets
 
 from . import db
 from .handler import get_chain_client, scan_only
@@ -33,14 +39,56 @@ except ImportError:
     def learning_snapshot():  # type: ignore[misc]
         return {}
 
+
 logger = logging.getLogger("clawguard.api")
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="ClawGuard API", version="0.1.0")
+_shutdown_event = asyncio.Event()
+_SKILL_MANIFEST_WINDOW_SEC = 60.0
+skill_manifest_rate_state: dict[str, list[float]] = defaultdict(list)
 
-_cors_raw = os.getenv(
+
+def _setup_signal_handlers() -> None:
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get(
+        "CLAWGUARD_DISABLE_SIGNAL_HANDLERS"
+    ):
+        return
+
+    def _handler(signum: int, _frame: object) -> None:
+        logger.info("Received signal %s, initiating shutdown", signum)
+        _shutdown_event.set()
+
+    try:
+        signal.signal(signal.SIGTERM, _handler)
+        signal.signal(signal.SIGINT, _handler)
+    except ValueError:
+        pass
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _setup_signal_handlers()
+    init_secrets("env")
+    db.init_db()
+    from skill.observability.alerts import init_alerts
+    from skill.observability.tracing import init_tracing
+
+    init_tracing(app)
+    slack = get_secret("SLACK_WEBHOOK_URL", default="")
+    if slack:
+        init_alerts(slack)
+        logger.info("Slack alerting configured")
+    logger.info("Secrets manager initialized; database migrations applied")
+    yield
+    logger.info("ClawGuard API shutting down")
+    await asyncio.sleep(0.2)
+
+
+app = FastAPI(title="ClawGuard API", version="0.1.0", lifespan=lifespan)
+
+_cors_raw = get_secret(
     "CORS_ORIGINS",
-    "http://localhost:5175,http://127.0.0.1:5175",
+    default="http://localhost:5175,http://127.0.0.1:5175",
 )
 _allow_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
 if not _allow_origins:
@@ -72,7 +120,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.scope["type"] != "http":
             return await call_next(request)
         path = request.url.path
-        if path in ("/api/health", "/docs", "/openapi.json", "/redoc"):
+        if path in (
+            "/api/health",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            "/metrics",
+        ):
             return await call_next(request)
         client = request.client.host if request.client else "unknown"
         now = time.monotonic()
@@ -85,9 +139,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-app.add_middleware(
-    RateLimitMiddleware, max_per_window=_RATE_MAX, window_sec=_RATE_WINDOW_SEC
-)
+app.add_middleware(RateLimitMiddleware, max_per_window=_RATE_MAX, window_sec=_RATE_WINDOW_SEC)
 
 
 class RequestLogMiddleware(BaseHTTPMiddleware):
@@ -96,9 +148,7 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         start = time.perf_counter()
         try:
-            response = await asyncio.wait_for(
-                call_next(request), timeout=_API_TIMEOUT_SEC
-            )
+            response = await asyncio.wait_for(call_next(request), timeout=_API_TIMEOUT_SEC)
         except TimeoutError:
             logger.exception("request_timeout path=%s", request.url.path)
             return JSONResponse({"detail": "request timeout"}, status_code=504)
@@ -116,7 +166,81 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class CSPMiddleware(BaseHTTPMiddleware):
+    """Content-Security-Policy on HTTP responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self' ws: wss:; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
+        )
+        return response
+
+
 app.add_middleware(RequestLogMiddleware)
+app.add_middleware(CSPMiddleware)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _skill_manifest_rate_allow(request: Request) -> bool:
+    max_r = int(get_secret("SKILL_AUDIT_RATE_LIMIT_PER_MIN", default="10"))
+    ip = _client_ip(request)
+    now = time.monotonic()
+    cutoff = now - _SKILL_MANIFEST_WINDOW_SEC
+    q = skill_manifest_rate_state[ip]
+    q[:] = [t for t in q if t > cutoff]
+    if len(q) >= max_r:
+        return False
+    q.append(now)
+    return True
+
+
+def _validate_bearer_token(token: str) -> bool:
+    expected = get_secret("WS_BEARER_TOKEN", default="")
+    if not expected:
+        return False
+    return token == expected
+
+
+async def _websocket_auth_ok(websocket: WebSocket, token: str | None) -> bool:
+    host = websocket.client.host if websocket.client else ""
+    if host in ("127.0.0.1", "::1", "localhost", "testclient"):
+        return True
+    if not token:
+        return False
+    return _validate_bearer_token(token)
+
+
+def _observe_scan_metrics(result: dict, start: float) -> None:
+    inner = result.get("verdict")
+    if isinstance(inner, dict):
+        verdict_label = inner.get("verdict", "unknown")
+    else:
+        verdict_label = result.get("action", "unknown")
+    modality = str(result.get("extraction", {}).get("modality", "unknown"))
+    try:
+        from skill.observability import metrics as prom
+
+        prom.detections_total.labels(
+            verdict=str(verdict_label), modality=modality
+        ).inc()
+        prom.detection_latency.observe(time.perf_counter() - start)
+    except Exception:
+        pass
 
 
 class ScanRequest(BaseModel):
@@ -128,25 +252,44 @@ class ScanRequest(BaseModel):
 @app.post("/api/scan")
 async def scan_text(req: ScanRequest):
     """Scan text content for injection attempts."""
-    result = scan_only(req.content, content_type=req.content_type, tool_name=req.tool_name)
+    from skill.observability.tracing import get_tracer
+
+    tracer = get_tracer("clawguard.api")
+    start = time.perf_counter()
+    with tracer.start_as_current_span("scan_text") as span:
+        span.set_attribute("content_length", len(req.content))
+        result = scan_only(
+            req.content, content_type=req.content_type, tool_name=req.tool_name
+        )
+        inner = result.get("verdict")
+        if isinstance(inner, dict):
+            span.set_attribute("verdict", str(inner.get("verdict", "")))
+        _observe_scan_metrics(result, start)
     return result
 
 
 @app.post("/api/scan/file")
 async def scan_file(file: UploadFile = File(...), tool_name: str = Form("manual")):
     """Scan an uploaded file for injection attempts."""
+    from skill.observability.tracing import get_tracer
+
+    tracer = get_tracer("clawguard.api")
+    start = time.perf_counter()
     content = await file.read()
     if len(content) > _MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
             detail=f"file too large (max {_MAX_UPLOAD_BYTES} bytes)",
         )
-    result = scan_only(
-        content,
-        content_type=file.content_type,
-        filename=file.filename,
-        tool_name=tool_name,
-    )
+    with tracer.start_as_current_span("scan_file") as span:
+        span.set_attribute("filename", file.filename or "")
+        result = scan_only(
+            content,
+            content_type=file.content_type,
+            filename=file.filename,
+            tool_name=tool_name,
+        )
+        _observe_scan_metrics(result, start)
     return result
 
 
@@ -171,7 +314,15 @@ async def get_threats(limit: int = 100):
 @app.post("/api/replay")
 async def replay_attack(req: ScanRequest):
     """Replay an attack for demo purposes — same as scan but clearly labeled."""
-    result = scan_only(req.content, content_type=req.content_type, tool_name="replay")
+    from skill.observability.tracing import get_tracer
+
+    start = time.perf_counter()
+    with get_tracer("clawguard.api").start_as_current_span("replay") as span:
+        span.set_attribute("content_length", len(req.content))
+        result = scan_only(
+            req.content, content_type=req.content_type, tool_name="replay"
+        )
+        _observe_scan_metrics(result, start)
     return result
 
 
@@ -197,12 +348,33 @@ class SkillAuditRequest(BaseModel):
     manifest: str
 
 
-@app.post("/api/scan/skill")
-async def scan_skill_manifest_endpoint(req: SkillAuditRequest):
-    """Assess an OpenClaw SKILL.md body for common malware / over-privileged patterns."""
+async def _handle_skill_audit(req: SkillAuditRequest, request: Request):
+    if not _skill_manifest_rate_allow(request):
+        raise HTTPException(
+            status_code=429,
+            detail="rate limit exceeded for skill manifest audit",
+        )
     if not req.manifest or not req.manifest.strip():
         raise HTTPException(status_code=400, detail="manifest required")
     return audit_skill_manifest(req.manifest)
+
+
+@app.post("/api/scan/skill")
+async def scan_skill_manifest_endpoint(req: SkillAuditRequest, request: Request):
+    """Assess an OpenClaw SKILL.md body for common malware / over-privileged patterns."""
+    return await _handle_skill_audit(req, request)
+
+
+@app.post("/api/skill")
+async def audit_skill_alias(req: SkillAuditRequest, request: Request):
+    """Alias for manifest audit (rate-limited)."""
+    return await _handle_skill_audit(req, request)
+
+
+@app.get("/api/audit")
+async def get_audit(action: str | None = None, limit: int = 100):
+    """Audit log (restrict in production)."""
+    return {"logs": db.get_audit_logs(action, limit)}
 
 
 # --- Dashboard-oriented aliases (also exposed under /api/v1) ---
@@ -279,7 +451,12 @@ async def learning_metrics():
     }
 
 
-async def _push_updates_websocket(websocket: WebSocket) -> None:
+async def _push_updates_websocket(
+    websocket: WebSocket, token: str | None = None
+) -> None:
+    if not await _websocket_auth_ok(websocket, token):
+        await websocket.close(code=1008, reason="authentication required")
+        return
     await websocket.accept()
     last_id = db.get_max_detection_id()
     try:
@@ -288,7 +465,11 @@ async def _push_updates_websocket(websocket: WebSocket) -> None:
             for row in new_rows:
                 last_id = max(last_id, int(row["id"]))
                 if row.get("verdict") and row["verdict"] != "pass":
-                    await websocket.send_json({"type": "detection", "detection": row})
+                    det = dict(row)
+                    det["content_preview"] = db.redact_content_preview(
+                        det.get("content_preview") or ""
+                    )
+                    await websocket.send_json({"type": "detection", "detection": det})
             await websocket.send_json(
                 {
                     "type": "stats",
@@ -302,15 +483,19 @@ async def _push_updates_websocket(websocket: WebSocket) -> None:
 
 
 @app.websocket("/ws/updates")
-async def updates_stream(websocket: WebSocket):
+async def updates_stream(
+    websocket: WebSocket, token: str | None = Query(default=None)
+):
     """Live stats + non-pass detections as they are logged."""
-    await _push_updates_websocket(websocket)
+    await _push_updates_websocket(websocket, token)
 
 
 @app.websocket("/updates")
-async def updates_stream_short_path(websocket: WebSocket):
+async def updates_stream_short_path(
+    websocket: WebSocket, token: str | None = Query(default=None)
+):
     """Alias for clients expecting `/updates` at app root (proxied)."""
-    await _push_updates_websocket(websocket)
+    await _push_updates_websocket(websocket, token)
 
 
 v1 = APIRouter(prefix="/api/v1")
@@ -342,8 +527,11 @@ async def v1_learning():
 
 
 @v1.websocket("/updates")
-async def v1_updates(websocket: WebSocket):
-    await _push_updates_websocket(websocket)
+async def v1_updates(
+    websocket: WebSocket, token: str | None = Query(default=None)
+):
+    await _push_updates_websocket(websocket, token)
 
 
 app.include_router(v1)
+app.mount("/metrics", make_asgi_app())

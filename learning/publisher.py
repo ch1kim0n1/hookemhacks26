@@ -11,12 +11,14 @@ When web3 (or the address / private key) is missing, the function still
 returns a structured dict so unit tests and the dev-mode demo can
 exercise the encoding path without an RPC.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 from typing import Any
+
+from skill.config.secrets import get_secret
 
 try:
     from eth_account import Account
@@ -120,6 +122,40 @@ def build_publish_payload(
     }
 
 
+def _record_publish_outcome(result: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    if result.get("queued"):
+        return result
+    try:
+        from skill.observability import metrics as prom
+
+        if result.get("ok"):
+            prom.defense_publishes_total.labels(status="success").inc()
+        else:
+            prom.defense_publishes_total.labels(status="failure").inc()
+    except Exception:
+        pass
+    try:
+        from skill import db
+
+        if result.get("ok"):
+            db.audit_log(
+                action="defense_published",
+                resource=f"update_id:{result.get('update_id', '')}",
+                detail=f"tx_hash={result.get('tx_hash', '')}",
+                result="success",
+            )
+        else:
+            db.audit_log(
+                action="defense_publish_failed",
+                resource="",
+                detail=str(result.get("error", ""))[:500],
+                result="failure",
+            )
+    except Exception:
+        pass
+    return result
+
+
 def publish_defense_update(
     *,
     rpc_url: str | None = None,
@@ -150,37 +186,46 @@ def publish_defense_update(
     )
 
     if not HAS_WEB3:
-        return {
-            "ok": False,
-            "queued": True,
-            "payload": _payload_to_hex(payload),
-            "error": "web3/eth-account not installed",
-        }
+        return _record_publish_outcome(
+            {
+                "ok": False,
+                "queued": True,
+                "payload": _payload_to_hex(payload),
+                "error": "web3/eth-account not installed",
+            },
+            payload,
+        )
 
-    rpc = rpc_url or os.getenv("RPC_URL", "http://127.0.0.1:8545")
-    addr = defense_protocol_address or os.getenv("DEFENSE_PROTOCOL_ADDRESS", "")
-    key = private_key or os.getenv("CLAWGUARD_PRIVATE_KEY", "")
+    rpc = rpc_url or get_secret("RPC_URL", default="")
+    if not rpc:
+        rpc = get_secret("BASE_SEPOLIA_RPC_URL", default="http://127.0.0.1:8545")
+    addr = defense_protocol_address or get_secret("DEFENSE_PROTOCOL_ADDRESS", default="")
+    key = private_key or get_secret("CLAWGUARD_PRIVATE_KEY", default="")
     if not addr or not key:
-        return {
-            "ok": False,
-            "queued": True,
-            "payload": _payload_to_hex(payload),
-            "error": "DEFENSE_PROTOCOL_ADDRESS and CLAWGUARD_PRIVATE_KEY required",
-        }
+        return _record_publish_outcome(
+            {
+                "ok": False,
+                "queued": True,
+                "payload": _payload_to_hex(payload),
+                "error": "DEFENSE_PROTOCOL_ADDRESS and CLAWGUARD_PRIVATE_KEY required",
+            },
+            payload,
+        )
 
     try:
         w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={"timeout": 5}))
         if not w3.is_connected():
-            return {
-                "ok": False,
-                "payload": _payload_to_hex(payload),
-                "error": f"rpc unreachable: {rpc}",
-            }
+            return _record_publish_outcome(
+                {
+                    "ok": False,
+                    "payload": _payload_to_hex(payload),
+                    "error": f"rpc unreachable: {rpc}",
+                },
+                payload,
+            )
 
         acct = Account.from_key(key)
-        contract = w3.eth.contract(
-            address=Web3.to_checksum_address(addr), abi=DEFENSE_PROTOCOL_ABI
-        )
+        contract = w3.eth.contract(address=Web3.to_checksum_address(addr), abi=DEFENSE_PROTOCOL_ABI)
         tx = contract.functions.publishDefenseUpdate(
             payload["updateId"],
             payload["ruleDiffHash"],
@@ -197,28 +242,33 @@ def publish_defense_update(
             }
         )
         signed = acct.sign_transaction(tx)
-        raw = getattr(signed, "raw_transaction", None) or getattr(
-            signed, "rawTransaction", None
-        )
+        raw = getattr(signed, "raw_transaction", None) or getattr(signed, "rawTransaction", None)
         tx_hash = w3.eth.send_raw_transaction(raw)
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
-        return {
-            "ok": receipt.status == 1,
-            "tx_hash": tx_hash.hex(),
-            "update_id": payload["updateId"].hex(),
-            "block": receipt.blockNumber,
-        }
+        return _record_publish_outcome(
+            {
+                "ok": receipt.status == 1,
+                "tx_hash": tx_hash.hex(),
+                "update_id": payload["updateId"].hex(),
+                "block": receipt.blockNumber,
+            },
+            payload,
+        )
     except Exception as exc:  # pragma: no cover - network-dependent
-        return {
-            "ok": False,
-            "payload": _payload_to_hex(payload),
-            "error": f"{type(exc).__name__}: {exc}",
-        }
+        return _record_publish_outcome(
+            {
+                "ok": False,
+                "payload": _payload_to_hex(payload),
+                "error": f"{type(exc).__name__}: {exc}",
+            },
+            payload,
+        )
 
 
 # ---------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------
+
 
 def _as_bytes32(value: bytes) -> bytes:
     if len(value) == 32:

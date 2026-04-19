@@ -13,6 +13,10 @@ dependencies = [
     "pdfplumber>=0.11.0",
     "pypdf>=4.0.0",
     "python-multipart>=0.0.26",
+    "alembic>=1.13.0",
+    "sqlalchemy>=2.0.0",
+    "httpx>=0.27.0",
+    "prometheus-client>=0.19.0",
 ]
 
 [project.optional-dependencies]
@@ -22,7 +26,23 @@ ocr = ["pytesseract>=0.3.10"]
 audio = ["openai-whisper>=20250625"]
 pdf-gen = ["reportlab>=4.0.0"]
 demo = ["alpaca-py>=0.43.2"]
-dev = ["pytest>=9.0.3", "httpx>=0.27.0", "ruff>=0.8.0", "bandit>=1.8.0"]
+observability = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+]
+dev = [
+    "pytest>=9.0.3",
+    "httpx>=0.27.0",
+    "ruff>=0.8.0",
+    "bandit>=1.8.0",
+    "pytest-asyncio>=0.24.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+]
 local = ["transformers>=5.5.4", "torch>=2.0.0", "web3>=7.0.0", "pytesseract>=0.3.10", "python-dotenv>=1.0.0"]
 
 [build-system]
@@ -36,4 +56,13 @@ include = ["skill*", "learning*", "network*", "zk*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["skill/tests", "learning/tests", "network/tests", "tests/contracts", "tests/performance", "zk/tests"]
+testpaths = [
+    "skill/tests",
+    "learning/tests",
+    "network/tests",
+    "blockchain/tests",
+    "tests/contracts",
+    "tests/performance",
+    "zk/tests",
+]
+asyncio_mode = "auto"

@@ -194,3 +194,19 @@ class ChainClient:
         self._stop_polling.set()
         if self._poll_thread:
             self._poll_thread.join(timeout=5)
+
+
+async def get_transaction_count_async(address: str) -> int:
+    """Async JSON-RPC `eth_getTransactionCount` (for non-blocking nonce reads)."""
+    from blockchain.async_client import call_rpc
+    from skill.config.secrets import get_secret
+
+    rpc_url = get_secret("RPC_URL", default="")
+    if not rpc_url:
+        rpc_url = get_secret("BASE_SEPOLIA_RPC_URL", default="http://127.0.0.1:8545")
+    count = await call_rpc(
+        "eth_getTransactionCount",
+        rpc_url,
+        params=[address, "pending"],
+    )
+    return int(count, 16)

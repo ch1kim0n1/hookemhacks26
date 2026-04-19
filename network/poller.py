@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from skill.config.secrets import get_secret
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -36,7 +38,7 @@ async def poll_attacks_loop(
     """Poll new attacks — replace with Redis fan-out in production."""
     if not HAS_WEB3:
         return
-    rpc = os.getenv("BASE_SEPOLIA_RPC_URL", "http://127.0.0.1:8545")
+    rpc = get_secret("BASE_SEPOLIA_RPC_URL", default="http://127.0.0.1:8545")
     addr = registry_address or os.getenv("CLAWGUARD_REGISTRY_ADDRESS", "")
     if not addr:
         return
@@ -86,6 +88,12 @@ async def poll_attacks_loop(
         if attacks is not None:
             for _a in attacks:
                 last += 1
+        try:
+            from blockchain.async_client import call_rpc
+
+            await call_rpc("eth_blockNumber", rpc, timeout=5.0)
+        except Exception:
+            logger.debug("eth_blockNumber probe failed", exc_info=True)
         await asyncio.sleep(interval_s)
 
 

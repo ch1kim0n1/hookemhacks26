@@ -1,4 +1,4 @@
-.PHONY: setup fixtures api dashboard demo contracts clean
+.PHONY: setup fixtures api dashboard demo contracts clean migrate test-headers
 
 # --- Setup ---
 setup:
@@ -67,6 +67,18 @@ demo-full: fixtures
 	@echo "API: http://localhost:8000/api/health"
 	@echo "Press Ctrl+C to stop all"
 	@wait
+
+# --- Verify CSP header (API must be running) ---
+test-headers:
+	@echo "=== Checking Content-Security-Policy on /api/health ==="
+	@curl -sfI http://localhost:8000/api/health | grep -i "content-security-policy" || (echo "CSP header missing (start API with: make api)"; exit 1)
+	@echo "CSP header present"
+
+# --- Database migrations ---
+migrate:
+	@echo "=== Running database migrations ==="
+	cd $(CURDIR) && uv run python -c "from skill.db import run_migrations; run_migrations()"
+	@echo "Migrations complete"
 
 # --- Clean ---
 clean:
