@@ -10,18 +10,36 @@ infrastructure/
 │   ├── preflight.sh          # pre-apply access + quota probe
 │   └── deploy-frontend.sh    # build frontend, sync to S3, invalidate CF
 ├── backend-bootstrap/        # creates the S3 bucket + DynamoDB table used as the TF backend
+├── lambdas/                  # source for the Python Lambdas packaged by the TF modules
+│   ├── detect/               # Bedrock-backed prompt-injection judge
+│   ├── rotate_token/         # Secrets Manager 4-step rotation
+│   └── sign_tx/              # KMS-backed EIP-1559 signer
 ├── modules/
 │   ├── preflight/            # TF-level data-source probe (fails at plan time if auth is broken)
-│   └── static-site/          # S3 (private) + CloudFront + OAC + HTTP→HTTPS redirect
+│   ├── static-site/          # S3 (private) + CloudFront + OAC + HTTP→HTTPS redirect
+│   ├── cognito/              # user pool + hosted UI + TOTP MFA
+│   ├── envelope-kms/         # symmetric CMK, yearly rotation — envelopes all off-chain secrets
+│   ├── node-signer/          # per-node asymmetric ECC_SECG_P256K1 signing key + task role
+│   ├── secrets/              # bearer-token secrets under the envelope CMK
+│   ├── rotation-lambda/      # 30-day token rotation handshake
+│   ├── bedrock/              # managed policy for bedrock:InvokeModel on Claude Haiku 4.5
+│   ├── api-gateway/          # HTTP API v2, AWS_IAM (SigV4) auth on /sign + /detect
+│   ├── network/              # VPC + PrivateLink endpoints + single NAT for RPC egress
+│   ├── nodes/                # ECR + ECS Fargate cluster + 3 validator services
+│   └── observability/        # SNS + CloudWatch alarms
 └── envs/
     └── prod/                 # single env for now. Uses the S3 backend.
 ```
 
 ## Current scope
 
-**Live today:** S3 + CloudFront static site hosting for the landing page in `../frontend/`.
+**Live today (Pillar 1):** S3 + CloudFront static site, Cognito with TOTP MFA for the judge demo.
 
-**Imported for later (not yet provisioned here):** Bedrock (Haiku multimodal detection), KMS asymmetric CMK + Secrets Manager for transaction signing, CloudWatch + SNS alerting, IAM. See the project root `CLAUDE.md` for how these map onto the detection pipeline and `skill/chain/client.py`.
+**Live today (Pillar 2):** envelope KMS CMK, per-node KMS signing keys, Secrets Manager with 30-day rotation, Bedrock managed policy, HTTP API v2 (SigV4) with the detect + sign-tx Lambdas, SNS + CloudWatch alarms.
+
+**Cost-gated (`var.enable_compute`):** VPC + PrivateLink endpoints + NAT + 3-node ECS Fargate cluster. Default is **off** (~$85/mo when on). Flip it on for a live demo, flip it off after. The KMS keys, Secrets Manager secrets, Bedrock policy, and API Gateway Lambdas apply whether or not compute is enabled — the secure-by-default core costs pennies.
+
+For the full AWS architecture story and judge pitch, see [`../docs/AWS_ARCHITECTURE.md`](../docs/AWS_ARCHITECTURE.md).
 
 ## First-time setup
 

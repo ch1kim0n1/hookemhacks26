@@ -3,25 +3,31 @@ import { classMap } from 'lit-html/directives/class-map.js';
 import { ref } from 'lit-html/directives/ref.js';
 import { AWS_SERVICES } from '../mock-data.js';
 import { store } from '../state.js';
-import { Icon } from '../icons.js';
+import { Icon, AwsIcon } from '../icons.js';
 
 // Local view state — which service is "active" in the sticky tab strip,
-// and which Q&A items are open per service.
+// which card has its Q&A drawer open, and which sections have been revealed
+// by the IntersectionObserver reveal pass.
 const viewState = {
   activeId: AWS_SERVICES[0]?.id ?? null,
-  openQa: new Set(), // keys of the form `${serviceId}:${qaIndex}`
+  openQa: new Set(), // `${serviceId}:${qaIndex}`
+  revealed: new Set(), // service ids that have entered the viewport at least once
 };
 
 const rerender = () => store.goto('aws');
 
-// Scrollspy — observe each service section, promote the most visible one to
-// the active tab. Idempotent; we re-attach after every render.
-let observer = null;
+// Two observers. `spy` promotes the most visible card to the active tab.
+// `reveal` fires once per card to add the .is-revealed class — drives the
+// stagger-in entrance animation without re-triggering on scroll-back.
+let spyObserver = null;
+let revealObserver = null;
 const sectionRefs = new Map();
-const attachObserver = () => {
+
+const attachObservers = () => {
   if (!('IntersectionObserver' in window)) return;
-  if (observer) observer.disconnect();
-  observer = new IntersectionObserver(
+
+  if (spyObserver) spyObserver.disconnect();
+  spyObserver = new IntersectionObserver(
     (entries) => {
       const visible = entries
         .filter((e) => e.isIntersecting)
@@ -33,9 +39,32 @@ const attachObserver = () => {
         rerender();
       }
     },
-    { rootMargin: '-40% 0px -50% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
+    { rootMargin: '-35% 0px -55% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
   );
-  sectionRefs.forEach((node) => node && observer.observe(node));
+
+  if (revealObserver) revealObserver.disconnect();
+  revealObserver = new IntersectionObserver(
+    (entries) => {
+      let changed = false;
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.dataset.awsId;
+          if (id && !viewState.revealed.has(id)) {
+            viewState.revealed.add(id);
+            changed = true;
+          }
+        }
+      });
+      if (changed) rerender();
+    },
+    { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
+  );
+
+  sectionRefs.forEach((node) => {
+    if (!node) return;
+    spyObserver.observe(node);
+    revealObserver.observe(node);
+  });
 };
 
 const jumpTo = (id) => {
@@ -54,140 +83,195 @@ const toggleQa = (serviceId, idx) => {
   rerender();
 };
 
-const serviceCard = (svc) => {
+// Maps each AWS service card to the key in /api/aws/status.services
+// so the "live" chip reflects actual runtime wiring.
+const STATUS_KEY_BY_ID = {
+  cognito: 'cognito',
+  bedrock: 'bedrock',
+  kms_signer: 'kms_signer',
+  kms_envelope: 'kms_envelope',
+  secrets_manager: 'secrets_manager',
+  api_gateway: 'api_gateway',
+  ecs_fargate: 'ecs_fargate',
+};
+
+const liveChip = (svc, awsStatus) => {
+  const key = STATUS_KEY_BY_ID[svc.id];
+  if (!key || !awsStatus?.services) {
+    return html`<span class="aws-chip is-idle" title="Live status unavailable">—</span>`;
+  }
+  const entry = awsStatus.services[key];
+  if (!entry) {
+    return html`<span class="aws-chip is-idle">not wired</span>`;
+  }
+  if (entry.configured) {
+    return html`<span class="aws-chip is-ok" title="Configured and reporting from /api/aws/status"><span class="aws-chip-dot"></span>live</span>`;
+  }
+  return html`<span class="aws-chip is-warn" title="Not configured in this environment"><span class="aws-chip-dot"></span>demo</span>`;
+};
+
+const serviceTile = (svc) => html`
+  <span
+    class="aws-service-tile"
+    style=${`--aws-color:${svc.awsColor}`}
+    aria-hidden="true"
+  >
+    ${AwsIcon[svc.icon] ?? AwsIcon.cognito}
+  </span>
+`;
+
+const serviceCard = (svc, awsStatus, idx) => {
+  const isRevealed = viewState.revealed.has(svc.id);
   return html`
     <section
-      class=${classMap({ 'aws-service': true, [`is-${svc.accent}`]: true })}
+      class=${classMap({
+        'aws-card': true,
+        'is-revealed': isRevealed,
+        'is-active': svc.id === viewState.activeId,
+      })}
       id=${`aws-${svc.id}`}
       data-aws-id=${svc.id}
+      style=${`--aws-color:${svc.awsColor}; --aws-reveal-delay:${Math.min(idx, 6) * 40}ms`}
       ${ref((node) => {
         if (node) {
           sectionRefs.set(svc.id, node);
-          if (observer) observer.observe(node);
+          if (spyObserver) spyObserver.observe(node);
+          if (revealObserver) revealObserver.observe(node);
         } else {
           sectionRefs.delete(svc.id);
         }
       })}
     >
-      <header class="aws-service-head">
-        <span class=${classMap({ 'aws-service-logo': true, [`is-${svc.accent}`]: true })} aria-hidden="true">
-          ${svc.short.slice(0, 3).toUpperCase()}
-        </span>
-        <div class="aws-service-titles">
-          <div class="aws-service-eyebrow">${svc.tag}</div>
-          <h2 class="aws-service-name">${svc.name}</h2>
-          <p class="aws-service-blurb">${svc.blurb}</p>
+      <header class="aws-card-head">
+        ${serviceTile(svc)}
+        <div class="aws-card-titles">
+          <div class="aws-card-meta">
+            <span class="aws-card-category">${svc.category}</span>
+            <span class="aws-card-sep" aria-hidden="true">·</span>
+            <span class="aws-card-tag">${svc.tag}</span>
+            ${liveChip(svc, awsStatus)}
+          </div>
+          <h2 class="aws-card-name">${svc.name}</h2>
         </div>
       </header>
 
-      <div class="aws-service-body">
-        <div class="aws-service-role">
-          <div class="aws-service-label">What it does for ClawGuard</div>
-          <p>${svc.role}</p>
-        </div>
+      <div class="aws-card-story">
+        <article class="aws-story-cell">
+          <div class="aws-story-label">
+            <span class="aws-story-num">01</span>
+            <span>What it does</span>
+          </div>
+          <p>${svc.purpose}</p>
+        </article>
+        <article class="aws-story-cell is-why">
+          <div class="aws-story-label">
+            <span class="aws-story-num">02</span>
+            <span>Why this service</span>
+          </div>
+          <p>${svc.why}</p>
+        </article>
+        <article class="aws-story-cell is-cost">
+          <div class="aws-story-label">
+            <span class="aws-story-num">03</span>
+            <span>Cost edge</span>
+          </div>
+          <p>${svc.cost}</p>
+        </article>
+      </div>
 
-        <div class="aws-where">
-          <div class="aws-service-label">Where it lives in the repo</div>
-          <ul class="aws-where-list">
+      <footer class="aws-card-foot">
+        <div class="aws-foot-where">
+          <div class="aws-foot-label">In the repo</div>
+          <ul>
             ${svc.where.map(
               (w) => html`
-                <li class="aws-where-item">
-                  <code class="aws-where-path">${w.path}</code>
-                  <span class="aws-where-note">${w.note}</span>
+                <li>
+                  <code>${w.path}</code>
+                  <span>${w.note}</span>
                 </li>
               `,
             )}
           </ul>
         </div>
-
-        <div class="aws-qa">
-          <div class="aws-service-label">Quick Q&amp;A</div>
-          ${svc.qa.map((item, idx) => {
-            const k = `${svc.id}:${idx}`;
+        <div class="aws-foot-qa">
+          <div class="aws-foot-label">Demo Q&amp;A</div>
+          ${svc.qa.map((item, qIdx) => {
+            const k = `${svc.id}:${qIdx}`;
             const open = viewState.openQa.has(k);
             return html`
               <button
                 class=${classMap({ 'aws-qa-item': true, 'is-open': open })}
                 type="button"
                 aria-expanded=${open ? 'true' : 'false'}
-                @click=${() => toggleQa(svc.id, idx)}
+                @click=${() => toggleQa(svc.id, qIdx)}
               >
                 <span class="aws-qa-q">
-                  <span class="aws-qa-mark" aria-hidden="true">Q</span>
-                  <span>${item.q}</span>
-                  <span class="aws-qa-chev" aria-hidden="true">${open ? '▾' : '▸'}</span>
+                  <span class="aws-qa-q-text">${item.q}</span>
+                  <span class="aws-qa-chev" aria-hidden="true">+</span>
                 </span>
                 ${open
-                  ? html`
-                      <span class="aws-qa-a">
-                        <span class="aws-qa-mark is-a" aria-hidden="true">A</span>
-                        <span>${item.a}</span>
-                      </span>
-                    `
+                  ? html`<span class="aws-qa-a">${item.a}</span>`
                   : ''}
               </button>
             `;
           })}
+        </div>
+      </footer>
+    </section>
+  `;
+};
+
+const intro = (awsStatus) => {
+  const account = awsStatus?.account || '—';
+  const region = awsStatus?.region || '—';
+  const services = awsStatus?.services || {};
+  const configured = Object.values(services).filter((s) => s?.configured).length;
+  return html`
+    <section class="aws-intro">
+      <div class="aws-intro-body">
+        <span class="aws-intro-eyebrow">Pillar 2 · AWS control plane</span>
+        <h2 class="aws-intro-title">13 services. One blast radius.</h2>
+        <p>
+          Every card answers three questions: <em>what does this service do</em>,
+          <em>why pick it over the obvious alternative</em>, and
+          <em>how do we keep the bill small</em>. If a judge asks something
+          not in the story, the Q&amp;A drawer under each card has the
+          drill-down.
+        </p>
+      </div>
+      <div class="aws-intro-stats">
+        <div class="aws-intro-stat">
+          <span class="aws-intro-num">${AWS_SERVICES.length}</span>
+          <span class="aws-intro-cap">services wired</span>
+        </div>
+        <div class="aws-intro-stat is-live">
+          <span class="aws-intro-num">${configured}</span>
+          <span class="aws-intro-cap">
+            live · ${account} / ${region}
+          </span>
+        </div>
+        <div class="aws-intro-stat is-iam">
+          <span class="aws-intro-num">0</span>
+          <span class="aws-intro-cap">wildcard IAM grants</span>
         </div>
       </div>
     </section>
   `;
 };
 
-const intro = () => html`
-  <section class="aws-intro">
-    <div class="aws-intro-body">
-      <h2>AWS on this stack — in 60 seconds</h2>
-      <p>
-        ClawGuard's control plane runs on ${AWS_SERVICES.length} AWS services.
-        Auth is <strong>Cognito</strong> with mandatory TOTP MFA. The dashboard
-        SPA ships as static files to <strong>S3</strong> (public access
-        blocked, SSE-S3, versioned) and is served through
-        <strong>CloudFront</strong> via an Origin Access Control — the bucket
-        never sees the public internet. The ops plane keeps
-        <strong>Terraform state</strong> in a separate encrypted S3 bucket
-        with a <strong>DynamoDB</strong> table for concurrent-apply locking.
-        <strong>IAM</strong> policies are explicit — no wildcards, named
-        principals only. <strong>Bedrock</strong> is wired as a preflight
-        check so the Claude-Haiku judge has a migration path when tenants
-        want model traffic inside their own AWS account.
-      </p>
-      <p class="aws-intro-note">
-        The threat cache is <em>not</em> on AWS — it lives on-chain in the
-        <code>ThreatRegistry</code> contract on Base Sepolia (chain id
-        84532) so any judge can verify intel independently. The audit log is
-        Postgres (prod) / SQLite (local), behind SQLAlchemy + Alembic.
-      </p>
-    </div>
-    <div class="aws-intro-stats">
-      <div class="aws-intro-stat">
-        <span class="aws-intro-stat-num">${AWS_SERVICES.length}</span>
-        <span class="aws-intro-stat-label">services</span>
-      </div>
-      <div class="aws-intro-stat">
-        <span class="aws-intro-stat-num">0</span>
-        <span class="aws-intro-stat-label">wildcard IAM grants</span>
-      </div>
-      <div class="aws-intro-stat">
-        <span class="aws-intro-stat-num">1</span>
-        <span class="aws-intro-stat-label">region (us-east-1)</span>
-      </div>
-    </div>
-  </section>
-`;
-
 const stickyTabs = () => html`
-  <nav class="aws-sticky-tabs" role="tablist" aria-label="AWS services">
+  <nav class="aws-tabs" role="tablist" aria-label="AWS services">
     ${AWS_SERVICES.map(
       (svc) => html`
         <button
           class=${classMap({ 'aws-tab': true, 'is-active': svc.id === viewState.activeId })}
+          style=${`--aws-color:${svc.awsColor}`}
           type="button"
           role="tab"
           aria-selected=${svc.id === viewState.activeId ? 'true' : 'false'}
           @click=${() => jumpTo(svc.id)}
         >
-          <span class=${classMap({ 'aws-tab-dot': true, [`is-${svc.accent}`]: true })} aria-hidden="true"></span>
+          <span class="aws-tab-dot" aria-hidden="true"></span>
           <span class="aws-tab-label">${svc.short}</span>
         </button>
       `,
@@ -196,16 +280,17 @@ const stickyTabs = () => html`
 `;
 
 export const awsView = () => {
-  // Re-attach the observer after the render commits.
-  requestAnimationFrame(() => attachObserver());
+  requestAnimationFrame(() => attachObservers());
+  const { live } = store.getState();
+  const awsStatus = live?.awsStatus;
 
   return html`
     <section class="dash-section aws-view">
       <div class="dash-page-header">
         <p class="dash-page-header-sub">
-          One card per AWS service, each with where it lives in the repo and a
-          couple of Q&amp;A items a reviewer tends to ask. Click a tab to jump;
-          the tab strip auto-promotes the card you're reading.
+          Demo cheat sheet — one card per AWS service. Click a tab to jump;
+          the strip auto-promotes the card you are reading. Live chips on
+          each card come from <code>/api/aws/status</code>.
         </p>
         <div class="aws-badge" aria-hidden="true">
           ${Icon.cloud}
@@ -213,11 +298,11 @@ export const awsView = () => {
         </div>
       </div>
 
-      ${intro()}
+      ${intro(awsStatus)}
       ${stickyTabs()}
 
-      <div class="aws-services">
-        ${AWS_SERVICES.map(serviceCard)}
+      <div class="aws-cards">
+        ${AWS_SERVICES.map((svc, idx) => serviceCard(svc, awsStatus, idx))}
       </div>
     </section>
   `;

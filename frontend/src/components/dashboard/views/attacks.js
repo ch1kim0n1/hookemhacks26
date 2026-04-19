@@ -1,9 +1,9 @@
 import { html } from 'lit-html';
 import { classMap } from 'lit-html/directives/class-map.js';
 import { store } from '../state.js';
-import { ATTACK_FEED } from '../mock-data.js';
 import { Icon } from '../icons.js';
 import { privatize, computeRareBuckets, bucketTime } from '../privacy.js';
+import { resolveVerdictPool } from '../../../lib/adapters.js';
 
 const FILTERS = [
   { key: 'all', label: 'All', match: () => true },
@@ -40,30 +40,33 @@ const attackRow = (a) => html`
 `;
 
 export const attacksView = () => {
+  const { live } = store.getState();
+  const feed = resolveVerdictPool(live);
   const filterDef = FILTERS.find((f) => f.key === activeFilter) ?? FILTERS[0];
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   // Privacy pass: compute bucketed times first so k-anon grouping uses the
   // same bucket keys the user will see.
-  const bucketed = ATTACK_FEED.map((a) => ({ ...a, time: bucketTime(a.time) }));
+  const bucketed = feed.map((a) => ({ ...a, time: bucketTime(a.time) }));
   const rareBuckets = computeRareBuckets(bucketed);
-  const privatized = ATTACK_FEED.map((a) => privatize(a, rareBuckets));
+  const privatized = feed.map((a) => privatize(a, rareBuckets));
 
   const rows = privatized.filter(filterDef.match).filter((a) => {
     if (!normalizedSearch) return true;
     return (
-      a.agent.includes(normalizedSearch) ||
-      a.hash.includes(normalizedSearch) ||
-      a.family.includes(normalizedSearch) ||
-      a.mod.includes(normalizedSearch)
+      (a.agent || '').toLowerCase().includes(normalizedSearch) ||
+      (a.hash || '').toLowerCase().includes(normalizedSearch) ||
+      (a.family || '').toLowerCase().includes(normalizedSearch) ||
+      (a.mod || '').toLowerCase().includes(normalizedSearch)
     );
   });
 
-  const blockedCount = ATTACK_FEED.filter((a) => a.verdict === 'block').length;
-  const quarCount = ATTACK_FEED.filter((a) => a.verdict === 'quar').length;
-  const passCount = ATTACK_FEED.filter((a) => a.verdict === 'pass').length;
-  const avgLatency =
-    ATTACK_FEED.reduce((sum, a) => sum + parseFloat(a.latencyMs), 0) / ATTACK_FEED.length;
+  const blockedCount = feed.filter((a) => a.verdict === 'block').length;
+  const quarCount = feed.filter((a) => a.verdict === 'quar').length;
+  const passCount = feed.filter((a) => a.verdict === 'pass').length;
+  const avgLatency = feed.length
+    ? feed.reduce((sum, a) => sum + parseFloat(a.latencyMs || 0), 0) / feed.length
+    : 0;
 
   const handleFilter = (key) => {
     activeFilter = key;
@@ -89,7 +92,7 @@ export const attacksView = () => {
       </div>
 
       <div class="dash-summary-grid">
-        ${summaryStat('Total (24h)', ATTACK_FEED.length, 'neutral')}
+        ${summaryStat('Total (24h)', feed.length, 'neutral')}
         ${summaryStat('Blocked', blockedCount, 'danger')}
         ${summaryStat('Quarantined', quarCount, 'warn')}
         ${summaryStat('Passed', passCount, 'ok')}
@@ -146,7 +149,7 @@ export const attacksView = () => {
           </table>
         </div>
         <div class="dash-table-foot">
-          <span>${rows.length} of ${ATTACK_FEED.length} detections</span>
+          <span>${rows.length} of ${feed.length} detections</span>
           <div class="dash-pager">
             <button class="btn btn-ghost btn-sm" type="button" @click=${() => store.toast('info', 'Demo dataset is a single page.')}>Prev</button>
             <button class="btn btn-ghost btn-sm" type="button" @click=${() => store.toast('info', 'Demo dataset is a single page.')}>Next</button>

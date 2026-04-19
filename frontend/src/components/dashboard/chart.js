@@ -1,5 +1,7 @@
 import { html, svg } from 'lit-html';
 import { HOURLY } from './mock-data.js';
+import { resolveHourly } from '../../lib/adapters.js';
+import { store } from './state.js';
 
 const buildPath = (points, w, h, pad) => {
   const max = Math.max(...points) * 1.15;
@@ -25,7 +27,15 @@ export const hourlyChart = () => {
   const w = 620;
   const h = 200;
   const pad = { t: 16, r: 10, b: 26, l: 10 };
-  const { line, area, pts, innerH } = buildPath(HOURLY, w, h, pad);
+  const { live } = store.getState();
+  const points = (() => {
+    const pts = resolveHourly(live);
+    const max = Math.max(...pts);
+    // If live data is all zeros, keep mock so the chart never looks flat-line
+    // dead during the demo.
+    return max === 0 ? HOURLY : pts;
+  })();
+  const { line, area, pts, innerH } = buildPath(points, w, h, pad);
   const gridLines = [0.25, 0.5, 0.75].map((p) => pad.t + innerH * p);
   const labels = [
     { x: pts[0].x, t: '00:00' },

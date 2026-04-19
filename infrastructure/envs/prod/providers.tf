@@ -25,3 +25,20 @@ provider "aws" {
     }
   }
 }
+
+# ACM certificates consumed by CloudFront must live in us-east-1. The root
+# provider is already us-east-1 in this env; the alias is declared so the dns
+# module can be region-explicit and safe to copy to another env later.
+provider "aws" {
+  alias   = "us_east_1"
+  profile = var.aws_profile
+  region  = "us-east-1"
+
+  default_tags {
+    tags = {
+      Project   = "clawguard"
+      Env       = "prod"
+      ManagedBy = "terraform"
+    }
+  }
+}

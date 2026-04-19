@@ -4,6 +4,8 @@
 
 import { INITIAL_VERDICTS } from './mock-data.js';
 import { cognito, cognitoConfigured } from '../../auth/cognito.js';
+import { initialLiveState } from '../../lib/live.js';
+import { setMockForced as lsSetMockForced } from '../../lib/api.js';
 
 const STORAGE_KEY = 'clawguardian.session.v1';
 
@@ -44,6 +46,7 @@ const initial = {
   toast: null, // { id, tone, text }
   verdicts: [...INITIAL_VERDICTS],
   settingsSection: null, // anchor to scroll to after routing
+  live: initialLiveState(),
 };
 
 let state = { ...initial };
@@ -336,6 +339,29 @@ export const store = {
   // Verdict stream ---------------------------------------------------------
   pushVerdict(v) {
     state = { ...state, verdicts: [v, ...state.verdicts.slice(0, 5)] };
+    emit();
+  },
+
+  // Live data --------------------------------------------------------------
+  patchLive(patch) {
+    state = { ...state, live: { ...state.live, ...patch } };
+    emit();
+  },
+
+  toggleMockForced() {
+    const next = !state.live.mockForced;
+    lsSetMockForced(next);
+    state = {
+      ...state,
+      live: { ...state.live, mockForced: next },
+      toast: {
+        id: Date.now(),
+        tone: next ? 'info' : 'ok',
+        text: next
+          ? 'Mock data forced on. The dashboard is not hitting the live API.'
+          : 'Killswitch disarmed. Showing live data from the API.',
+      },
+    };
     emit();
   },
 };

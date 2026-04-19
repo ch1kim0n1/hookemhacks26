@@ -118,23 +118,52 @@ class ChainClient:
             os.getenv("CLAWGUARD_REGISTRY_ADDRESS", "").strip() or threat_registry_address()
         )
         self.private_key = os.getenv("CLAWGUARD_PRIVATE_KEY", "").strip()
+        self.kms_key_id = os.getenv("CLAWGUARD_KMS_KEY_ID", "").strip()
         self._w3 = None
         self._contract = None
         self._poll_thread = None
         self._stop_polling = threading.Event()
+        self._kms_signer = None
         if not self.registry_address:
             logger.warning(
                 "CLAWGUARD_REGISTRY_ADDRESS is unset — on-chain registry calls are disabled "
                 "(threat cache / publish still work locally). Set env for Base Sepolia."
             )
-        elif not self.private_key:
+        elif not (self.private_key or self.kms_key_id):
             logger.warning(
-                "CLAWGUARD_PRIVATE_KEY is unset — publishAttack and live polls are disabled."
+                "Neither CLAWGUARD_KMS_KEY_ID nor CLAWGUARD_PRIVATE_KEY is set — "
+                "publishAttack and live polls are disabled."
             )
 
     @property
+    def signer(self):
+        """Return the KMS signer if CLAWGUARD_KMS_KEY_ID is set, else None.
+
+        KMS takes priority: if a node is wired to an HSM-bound key, we never
+        want to silently fall back to a plaintext key even if one is present.
+        """
+        if self._kms_signer is not None or not self.kms_key_id:
+            return self._kms_signer
+        from .kms_signer import KmsSigner
+
+        self._kms_signer = KmsSigner(self.kms_key_id)
+        return self._kms_signer
+
+    @property
+    def signer_address(self) -> str | None:
+        if self.kms_key_id:
+            return self.signer.address
+        if self.private_key and HAS_WEB3:
+            return self.w3.eth.account.from_key(self.private_key).address
+        return None
+
+    @property
     def available(self) -> bool:
-        return HAS_WEB3 and bool(self.registry_address) and bool(self.private_key)
+        return (
+            HAS_WEB3
+            and bool(self.registry_address)
+            and bool(self.private_key or self.kms_key_id)
+        )
 
     @property
     def w3(self):
@@ -169,22 +198,29 @@ class ChainClient:
             if len(ch) > 64:
                 ch = ch[:64]
             pattern_hash = bytes.fromhex(ch.ljust(64, "0")[:64])
-            account = self.w3.eth.account.from_key(self.private_key)
+
+            sender_address = self.signer_address
+            if sender_address is None:
+                return None
 
             tx = self.contract.functions.publishAttack(
                 pattern_hash, category, sample_redacted[:200]
             ).build_transaction({
-                "from": account.address,
-                "nonce": self.w3.eth.get_transaction_count(account.address),
+                "from": sender_address,
+                "nonce": self.w3.eth.get_transaction_count(sender_address),
                 "gas": 400000,
                 "gasPrice": self.w3.eth.gas_price,
             })
 
-            signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            if self.kms_key_id:
+                signed = self.signer.sign_transaction(tx)
+            else:
+                signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+
             tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
 
             # Cache locally immediately (canonical 64-char hex key)
-            cache_threat(ch, category, sample_redacted, account.address)
+            cache_threat(ch, category, sample_redacted, sender_address)
 
             return tx_hash.hex()
         except Exception as e:

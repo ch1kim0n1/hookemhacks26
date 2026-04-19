@@ -1,6 +1,7 @@
 import { render } from 'lit-html';
 import { dashboardApp, store } from './components/dashboard-app.js';
 import { VERDICT_POOL } from './components/dashboard/mock-data.js';
+import { startLive } from './lib/live.js';
 
 const root = document.getElementById('app');
 if (!root) throw new Error('Missing #app root');
@@ -128,3 +129,8 @@ requestAnimationFrame(() => {
   const s = store.getState();
   if (s.route === 'overview' && s.session) start();
 });
+
+// Start polling the FastAPI backend. Runs regardless of session so the AWS
+// status card on the login-gated dashboard is warm by the time the operator
+// clicks into it. The poll pauses automatically when the tab is hidden.
+startLive(store);

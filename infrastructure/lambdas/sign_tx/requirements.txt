@@ -1,0 +1,2 @@
+eth-utils>=4.1.1,<6
+coincurve>=19.0.1,<22

@@ -166,6 +166,11 @@ What this repo is and isn't, per subsystem:
 | On-chain publish — threat registry (`skill/chain/client.py`) | Works when env set | Real web3 writes to Base Sepolia |
 | On-chain publish — defense updates (`learning/publisher.py`) | Works when env set | Real `DefenseProtocol.publishDefenseUpdate` |
 | Async RPC client (`blockchain/async_client.py`) | Works | Dedupe + severity-aware alerts |
+| AWS KMS signer (`skill/chain/kms_signer.py`) | Works | Non-exportable ECC_SECG_P256K1 keys; drop-in replacement for `eth_account.sign_transaction`. Set `CLAWGUARD_KMS_KEY_ID` to activate |
+| AWS envelope cipher (`skill/chain/envelope.py`) | Works | AES-256-GCM via `kms:GenerateDataKey` under the envelope CMK |
+| AWS Secrets Manager backend (`skill/config/secrets.py`) | Works | `CLAWGUARD_SECRETS_SOURCE=aws`; 5-min TTL cache; falls back to env on miss |
+| Bedrock judge (`skill/detectors/bedrock_judge.py`) | Works | Claude Haiku 4.5 via Bedrock Converse; fail-closed to `sanitize` |
+| AWS infrastructure (`infrastructure/envs/prod`) | Works | Full Terraform: KMS + Secrets Manager + Bedrock + API Gateway + ECS Fargate. `enable_compute=false` by default to keep costs off. See [`docs/AWS_ARCHITECTURE.md`](docs/AWS_ARCHITECTURE.md) |
 | Learning loop (`learning/`) | **Scaffold** | Red agent is a stub, blue agent is real MLP but trained on hardcoded features; see `learning/README.md` for the honest story |
 | ZK proofs (`zk/`) | **Mock** | `prover_host.py` returns deterministic fake Groth16 JSON; real RISC Zero flow is documented under `zk/INTEGRATION.md` |
 | On-chain anomaly detection (`detector/on_chain/`) | Exploratory | IsolationForest + state machine; benchmarks under `detector/bench/` |

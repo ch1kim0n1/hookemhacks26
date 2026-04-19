@@ -1,23 +1,38 @@
 import { html } from 'lit-html';
-import { OVERVIEW_STATS, MODALITIES } from '../mock-data.js';
 import { Icon } from '../icons.js';
 import { store } from '../state.js';
 import { hourlyChart } from '../chart.js';
 import { privatize, computeRareBuckets, bucketTime, K_ANON_THRESHOLD } from '../privacy.js';
+import {
+  resolveOverviewStats,
+  resolveModalities,
+  resolveVerdicts,
+} from '../../../lib/adapters.js';
 
-const pageHeader = () => html`
-  <div class="dash-page-header">
-    <p class="dash-page-header-sub">
-      <strong>Blocked</strong> never reached the model.
-      <strong>Quarantined</strong> was sanitized &amp; escalated.
-      Confirmed attacks are published to Base Sepolia so peers short-circuit the pipeline on a ~5&nbsp;ms chain lookup.
-    </p>
-    <span class="dash-chip is-ghost">
-      <span class="dash-dot"></span>
-      updated 3s ago
-    </span>
-  </div>
-`;
+const pageHeader = (live) => {
+  const stale = live?.lastUpdate
+    ? Math.max(1, Math.round((Date.now() - live.lastUpdate) / 1000))
+    : null;
+  const isLive = !live?.mockForced && !!live?.health;
+  const chipLabel = live?.mockForced
+    ? 'mock data'
+    : stale != null
+      ? `updated ${stale}s ago`
+      : 'connecting…';
+  return html`
+    <div class="dash-page-header">
+      <p class="dash-page-header-sub">
+        <strong>Blocked</strong> never reached the model.
+        <strong>Quarantined</strong> was sanitized &amp; escalated.
+        Confirmed attacks are published to Base Sepolia so peers short-circuit the pipeline on a ~5&nbsp;ms chain lookup.
+      </p>
+      <span class="dash-chip is-ghost">
+        <span class="dash-dot" style=${isLive ? 'background:#1b7a94;' : ''}></span>
+        ${chipLabel}
+      </span>
+    </div>
+  `;
+};
 
 const statCard = (s) => html`
   <div class="dash-stat">
@@ -48,8 +63,25 @@ const chartCard = () => html`
   </div>
 `;
 
-const modalityCard = () => {
-  const max = Math.max(...MODALITIES.map((m) => m.value));
+const modalityCard = (modalities) => {
+  if (!modalities.length) {
+    return html`
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <div>
+            <div class="dash-card-title">By modality</div>
+            <div class="dash-card-sub">where did the payload arrive from?</div>
+          </div>
+          <span class="dash-chip is-ghost">live</span>
+        </div>
+        <div class="dash-card-empty" style="padding:28px 8px;color:var(--color-muted);text-align:center;font-size:13px;">
+          No payloads scanned on this node yet. Kick off <code>make demo</code>
+          (or hit <code>/api/scan</code>) and this chart will populate.
+        </div>
+      </div>
+    `;
+  }
+  const max = Math.max(1, ...modalities.map((m) => m.value));
   return html`
     <div class="dash-card">
       <div class="dash-card-header">
@@ -59,7 +91,7 @@ const modalityCard = () => {
         </div>
         <span class="dash-chip is-ghost">24h</span>
       </div>
-      ${MODALITIES.map(
+      ${modalities.map(
         (m) => html`
           <div class="dash-mod-row">
             <span class="dash-mod-label">${m.label}</span>
@@ -91,8 +123,8 @@ const verdictRow = (v) => html`
   </tr>
 `;
 
-const verdictsCard = () => {
-  const raw = store.getState().verdicts;
+const verdictsCard = (verdicts) => {
+  const raw = verdicts;
   const bucketed = raw.map((v) => ({ ...v, time: bucketTime(v.time) }));
   const rare = computeRareBuckets(bucketed);
   const rows = raw.map((v) => ({ ...privatize(v, rare), _raw: v }));
@@ -224,12 +256,23 @@ const threatFlowCard = () => html`
   </div>
 `;
 
-export const overviewView = () => html`
-  ${pageHeader()}
-  <div class="dash-stats">${OVERVIEW_STATS.map(statCard)}</div>
-  <div class="dash-row">
-    ${chartCard()}
-    ${modalityCard()}
-  </div>
-  ${verdictsCard()}
-`;
+export const overviewView = () => {
+  const { live, verdicts: streamedVerdicts } = store.getState();
+  const stats = resolveOverviewStats(live);
+  const modalities = resolveModalities(live);
+  // If we have live attacks, prefer those; otherwise stick with the streamed
+  // mock verdicts so the table never goes empty.
+  const liveVerdicts = resolveVerdicts(live);
+  const rows = live?.mockForced || liveVerdicts.length === 0
+    ? streamedVerdicts
+    : liveVerdicts;
+  return html`
+    ${pageHeader(live)}
+    <div class="dash-stats">${stats.map(statCard)}</div>
+    <div class="dash-row">
+      ${chartCard()}
+      ${modalityCard(modalities)}
+    </div>
+    ${verdictsCard(rows)}
+  `;
+};

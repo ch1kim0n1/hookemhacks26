@@ -134,7 +134,35 @@ const userMenu = (session) => html`
   </div>
 `;
 
-const topbar = (routeKey, session, userMenuOpen) => {
+const liveStatusChip = (live) => {
+  const forced = !!live?.mockForced;
+  const healthy = !!live?.health;
+  const tone = forced ? 'warn' : healthy ? 'ok' : 'idle';
+  const label = forced
+    ? 'mock data (killswitch on)'
+    : healthy
+      ? `live · ${live?.health?.deploy_profile ?? 'api'}`
+      : 'api unreachable';
+  const title = forced
+    ? 'Forced mock mode — no live data. Click to re-enable the live API.'
+    : healthy
+      ? `Polling ${live?.health?.version ? 'v' + live.health.version : 'the FastAPI backend'}. Click to force mock data.`
+      : 'The live API is unreachable right now — the dashboard is using mock data as a fallback. Click to pin mock mode explicitly.';
+  return html`
+    <button
+      class=${classMap({ 'dash-live-chip': true, [`is-${tone}`]: true })}
+      type="button"
+      title=${title}
+      aria-label="Toggle mock data killswitch"
+      @click=${(e) => { e.stopPropagation(); store.toggleMockForced(); }}
+    >
+      <span class=${classMap({ 'dash-live-dot': true, [`is-${tone}`]: true })} aria-hidden="true"></span>
+      <span class="dash-live-label">${label}</span>
+    </button>
+  `;
+};
+
+const topbar = (routeKey, session, userMenuOpen, live) => {
   const meta = ROUTES[routeKey] ?? ROUTES.overview;
   return html`
     <header class="dash-top">
@@ -147,6 +175,7 @@ const topbar = (routeKey, session, userMenuOpen) => {
         <span class="dash-top-sub">${meta.sub}</span>
       </div>
       <div class="dash-top-right">
+        ${liveStatusChip(live)}
         <div class="dash-user-wrap">
           <button
             class=${classMap({ 'dash-user-btn': true, 'is-open': userMenuOpen })}
@@ -337,7 +366,7 @@ export const shell = (main) => {
   if (!state.session) return main;
   return html`
     <div class="dash">
-      ${topbar(state.route, state.session, state.userMenuOpen)}
+      ${topbar(state.route, state.session, state.userMenuOpen, state.live)}
       ${sidebar(state.route)}
       <main class="dash-main" @click=${() => store.closeUserMenu()}>${main}</main>
       ${state.drawer?.type === 'verdict' ? verdictDrawer(state.drawer.payload) : ''}

@@ -151,7 +151,33 @@ const row = (a) => html`
   </tr>
 `;
 
+const liveBanner = (live) => {
+  const nodes = live?.network?.nodes || [];
+  const peers = live?.network?.peer_urls_configured || [];
+  if (!nodes.length && !peers.length && !live?.health) {
+    return html`
+      <div class="dash-banner is-idle">
+        <span class="dash-banner-dot"></span>
+        <span>API unreachable — showing synthesized fleet.</span>
+      </div>
+    `;
+  }
+  const chainOk = !!live?.health?.chain_available;
+  return html`
+    <div class="dash-banner is-ok">
+      <span class="dash-banner-dot" style="background:#1b7a94;"></span>
+      <span>
+        Live fleet: <strong>${nodes.length || 1}</strong> node${nodes.length === 1 ? '' : 's'} ·
+        <strong>${peers.length}</strong> peer URL${peers.length === 1 ? '' : 's'} configured ·
+        chain <strong>${chainOk ? 'connected' : 'offline'}</strong>
+        ${live?.health?.version ? html` · api v${live.health.version}` : ''}
+      </span>
+    </div>
+  `;
+};
+
 export const agentsView = () => {
+  const { live } = store.getState();
   const healthy = ALL_AGENTS.filter((a) => a.status === 'healthy').length;
   const warning = ALL_AGENTS.filter((a) => a.status === 'warning').length;
   const maintenance = ALL_AGENTS.filter((a) => a.status === 'maintenance').length;
@@ -189,6 +215,8 @@ export const agentsView = () => {
           Add agent
         </button>
       </div>
+
+      ${liveBanner(live)}
 
       <div class="dash-summary-grid">
         <div class="dash-summary-stat is-ok">

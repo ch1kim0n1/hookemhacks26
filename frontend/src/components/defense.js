@@ -154,7 +154,7 @@ export const defense = () => html`
            never loses the Issue / Why / How framing mid-animation. -->
       <div data-pipeline-pin>
         <div
-          class="grid gap-8 mb-8"
+          class="grid gap-8 py-16"
           style="grid-template-columns: repeat(3, minmax(0, 1fr));"
         >
           ${column(
