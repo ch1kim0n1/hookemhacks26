@@ -1,0 +1,11 @@
+# Copy to backend.hcl and fill in from `cd ../../backend-bootstrap && terraform output`.
+# backend.hcl is gitignored (see ../../.gitignore).
+#
+# Then: terraform init -backend-config=backend.hcl
+
+bucket         = "clawguard-tf-state-REPLACE_WITH_ACCOUNT_ID"
+key            = "envs/prod/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "clawguard-tf-lock"
+encrypt        = true
+profile        = "hookem"

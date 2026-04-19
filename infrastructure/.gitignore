@@ -1,0 +1,29 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl.backup
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+
+# Variable files that may contain secrets or per-user overrides.
+# `terraform.tfvars` checked-in versions live in each env as `terraform.tfvars.example`.
+*.auto.tfvars
+*.auto.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan outputs
+*.tfplan
+*.tfplan.*
+
+# Backend config + per-env tfvars (use *.example checked in instead)
+envs/*/backend.hcl
+envs/*/terraform.tfvars
+
+# Editor
+.idea/
+.vscode/

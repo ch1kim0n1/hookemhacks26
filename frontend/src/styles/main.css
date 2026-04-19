@@ -1,0 +1,398 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Design tokens — technical / security aesthetic.
+   IBM Plex Mono as display (monospaced = infra / security feel).
+   IBM Plex Sans for body copy.
+   ========================================================================== */
+@theme {
+  --color-ink: #141210;
+  --color-ink-2: #2a2520;
+  --color-ink-3: #4a433b;
+  --color-muted: #7a6f62;
+  --color-line: #d9cdb6;
+  --color-line-2: #c8b99b;
+  --color-bone: #f4ece0;
+  --color-bone-2: #ede2cf;
+  --color-paper: #ebe0cc;
+  --color-paper-2: #e4d6bc;
+  --color-paper-3: #f6efe2;
+
+  --color-ocean-900: #0a3a52;
+  --color-ocean-800: #0b4f6c;
+  --color-ocean-600: #1b7a94;
+  --color-ocean-400: #6fb0c2;
+  --color-ocean-200: #b9d7df;
+
+  --color-crab: #d95a2b;
+  --color-crab-2: #e87148;
+  --color-crab-3: #c24a20;
+
+  --color-accent: #d95a2b;
+  --color-accent-2: #c24a20;
+  --color-highlight: #f2d7c4;
+  --color-success: #1b7a94;
+
+  --font-hand: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --nav-h: 84px;
+  --container-wide: 1240px;
+}
+
+/* ==========================================================================
+   Base.
+   ========================================================================== */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(185, 215, 223, 0.18) 0 30%, transparent 55%),
+    radial-gradient(circle at 85% 90%, rgba(217, 90, 43, 0.08) 0 30%, transparent 55%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Typography + layout primitives.
+   ========================================================================== */
+@layer components {
+  .container-wide {
+    width: 100%;
+    max-width: var(--container-wide);
+    margin-inline: auto;
+    padding-inline: 32px;
+  }
+
+  /* Sections fit one viewport minus nav; content centered. */
+  .section-vh {
+    min-height: calc(100svh - var(--nav-h));
+    display: flex;
+    align-items: center;
+    padding-block: 32px;
+  }
+  .section-vh-tall {
+    min-height: calc(100svh - var(--nav-h));
+    padding-block: 56px;
+  }
+
+  /* Editorial display — IBM Plex Mono, tight. */
+  .display {
+    font-family: var(--font-hand);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.04;
+    color: var(--color-ink);
+  }
+  .display-xl {
+    font-size: clamp(36px, 4.6vw, 64px);
+  }
+  .display-lg {
+    font-size: clamp(30px, 3.6vw, 48px);
+  }
+  .display-md {
+    font-size: clamp(24px, 2.6vw, 34px);
+  }
+
+  /* Soft marker highlight — rare, one hit per section max. */
+  .hw-marker {
+    background: linear-gradient(
+      transparent 58%,
+      var(--color-highlight) 58% 92%,
+      transparent 92%
+    );
+    padding: 0 4px;
+  }
+
+  /* Body lede. */
+  .lede {
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--color-ink-2);
+    text-wrap: pretty;
+  }
+
+  .paper-box {
+    position: relative;
+    border: 1.5px solid var(--color-line);
+    background: var(--color-paper-3);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 11px 20px;
+    background: var(--color-ink);
+    color: var(--color-paper);
+    border: 1.5px solid var(--color-line);
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 var(--color-accent);
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pill:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 var(--color-accent);
+  }
+  .pill-accent {
+    background: var(--color-accent);
+    color: #fff;
+    box-shadow: 3px 3px 0 var(--color-ink);
+  }
+  .pill-accent:hover {
+    box-shadow: 5px 5px 0 var(--color-ink);
+  }
+  .pill-ghost {
+    background: transparent;
+    color: var(--color-ink);
+    box-shadow: 3px 3px 0 rgba(20, 18, 16, 0.18);
+  }
+  .pill-ghost:hover {
+    box-shadow: 5px 5px 0 rgba(20, 18, 16, 0.28);
+  }
+
+  .rule-dashed {
+    border-bottom: 1.5px dashed var(--color-line);
+  }
+
+  .bg-soft {
+    background-color: var(--color-paper);
+  }
+  .bg-warm {
+    background-color: var(--color-paper-2);
+  }
+  .bg-paper3 {
+    background-color: var(--color-paper-3);
+  }
+  .bg-dots {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(20, 18, 16, 0.09) 1px,
+      transparent 0
+    );
+    background-size: 22px 22px;
+    background-color: var(--color-paper-3);
+  }
+
+  /* Animated highlighter under nav links. */
+  .nav-link {
+    position: relative;
+    padding: 4px 2px;
+    color: var(--color-ink-2);
+    text-decoration: none;
+    transition: color 220ms ease;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    height: 9px;
+    background: var(--color-highlight);
+    border-radius: 2px;
+    z-index: -1;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nav-link:hover {
+    color: var(--color-ink);
+  }
+  .nav-link:hover::after {
+    transform: scaleX(1);
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--color-crab);
+    box-shadow: 0 0 0 4px rgba(217, 90, 43, 0.22);
+    animation: live-pulse 1.8s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes live-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 4px rgba(217, 90, 43, 0.22);
+    }
+    50% {
+      box-shadow: 0 0 0 7px rgba(217, 90, 43, 0.06);
+    }
+  }
+}
+
+/* ==========================================================================
+   Reveal helpers.
+   ========================================================================== */
+.reveal-prep {
+  opacity: 0;
+}
+.reveal-prep.from-bottom {
+  transform: translate3d(0, 28px, 0);
+}
+.reveal-prep.from-left {
+  transform: translate3d(-36px, 0, 0);
+}
+.reveal-prep.from-right {
+  transform: translate3d(36px, 0, 0);
+}
+.reveal-prep.scale-in {
+  transform: scale(0.96) translate3d(0, 14px, 0);
+}
+
+/* ==========================================================================
+   Network — decentralized peer mesh.
+   ========================================================================== */
+.net-node {
+  fill: var(--color-paper-3);
+  stroke: var(--color-ink-3);
+  stroke-width: 1.3;
+  transition:
+    fill 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    stroke 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    r 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.net-node.is-you {
+  fill: var(--color-highlight);
+  stroke: var(--color-accent);
+  stroke-width: 2.4;
+}
+.net-node.is-hit {
+  fill: #fecaca;
+  stroke: var(--color-crab);
+  stroke-width: 2.6;
+  filter: drop-shadow(0 0 8px rgba(217, 90, 43, 0.5));
+}
+.net-node.is-immune {
+  fill: rgba(27, 122, 148, 0.22);
+  stroke: var(--color-ocean-600);
+  stroke-width: 1.6;
+}
+.net-node.is-blocked {
+  fill: rgba(27, 122, 148, 0.55);
+  stroke: var(--color-ocean-800);
+  stroke-width: 2.6;
+  filter: drop-shadow(0 0 8px rgba(27, 122, 148, 0.45));
+}
+
+.net-link {
+  stroke: var(--color-ink-3);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.22;
+  transition: opacity 280ms ease, stroke 280ms ease, stroke-width 280ms ease;
+}
+.net-link.is-active {
+  stroke: var(--color-accent);
+  stroke-width: 1.8;
+  opacity: 0.92;
+  stroke-dasharray: 5 3;
+  filter: drop-shadow(0 0 3px rgba(217, 90, 43, 0.45));
+}
+.net-link.is-immune {
+  stroke: var(--color-ocean-600);
+  opacity: 0.4;
+}
+
+.net-site-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--color-ink);
+  letter-spacing: 0.02em;
+}
+.net-site-box {
+  fill: var(--color-paper-3);
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+}
+
+/* Scrollytelling panels — opacity-only crossfade, never translate; the
+   text should never "jump" between beats. */
+.scrolly-panel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 520ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.scrolly-panel.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Scroll progress dots (act indicator). */
+.act-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-ink-3);
+  background: transparent;
+  transition:
+    background 320ms ease,
+    border-color 320ms ease,
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.act-dot.is-active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: scale(1.25);
+}
+
+/* ==========================================================================
+   Hero email — injection line is near-invisible at rest (text color just
+   above the page paper). The flash pulls it to full contrast so the viewer
+   can read it for a beat and then lose it again: human can't see · LLM can.
+   ========================================================================== */
+[data-email-injection].is-flash {
+  background: rgba(217, 90, 43, 0.18) !important;
+  border-left-color: var(--color-accent) !important;
+  color: var(--color-ink) !important;
+  box-shadow: 0 0 0 3px rgba(217, 90, 43, 0.12);
+}
+
+/* ==========================================================================
+   Problem specimen (PDF with hidden instruction).
+   ========================================================================== */
+[data-problem-hidden].is-revealed {
+  background: var(--color-highlight) !important;
+  border-color: var(--color-accent) !important;
+  color: var(--color-ink) !important;
+}
+[data-problem-annot].is-revealed {
+  opacity: 1 !important;
+}
+
