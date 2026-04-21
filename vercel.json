@@ -5,7 +5,7 @@
   "buildCommand": "cd dashboard && npm run build && mkdir -p ../public && cp -r dist/* ../public/",
   "functions": {
     "api/**/*.py": {
-      "excludeFiles": "{.git/**,.worktrees/**,.venv/**,**/__pycache__/**,**/.pytest_cache/**,**/*.pyc,contracts/cache/**,contracts/out/**,contracts/lib/**,dashboard/node_modules/**,detector/bench/**,blockchain/**,network/**,store/**,**/tests/**,**/test_*.py,learning/tests/**,zk/tests/**,demo/**,public/**}"
+      "excludeFiles": "{.git,.worktrees,.venv,**/__pycache__,**/.pytest_cache,**/*.pyc,contracts/{cache,out,lib},dashboard/node_modules,detector/bench}"
     }
   },
   "rewrites": [
