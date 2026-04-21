@@ -1,10 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "if [ -f pyproject.toml ]; then ROOT='.'; elif [ -f ../pyproject.toml ]; then ROOT='..'; else echo 'pyproject.toml not found in . or ..'; exit 1; fi; cd \"$ROOT\" && uv pip install --system --no-cache-dir -r requirements.txt && cd frontend && npm ci",
-  "buildCommand": "if [ -d frontend ]; then cd frontend; fi && npm run build && mkdir -p ../public && cp -r dist/* ../public/",
+  "installCommand": "if [ -f pyproject.toml ]; then ROOT=\"$(pwd -P)\"; elif [ -f ../pyproject.toml ]; then ROOT=\"$(cd .. && pwd -P)\"; else echo 'pyproject.toml not found in . or ..'; exit 1; fi; cd \"$ROOT\" && uv pip install --system --no-cache-dir -r requirements.txt && cd frontend && npm ci",
+  "buildCommand": "if [ -f pyproject.toml ]; then ROOT=\"$(pwd -P)\"; elif [ -f ../pyproject.toml ]; then ROOT=\"$(cd .. && pwd -P)\"; else echo 'pyproject.toml not found in . or ..'; exit 1; fi; cd \"$ROOT/frontend\" && npm run build && mkdir -p \"$ROOT/public\" && cp -r dist/* \"$ROOT/public/\"",
   "functions": {
     "api/**/*.py": {
+      "runtime": "python3.11",
       "excludeFiles": "{.git/**,.worktrees/**,.venv/**,**/{__pycache__,.pytest_cache,tests}/**,**/*.pyc,**/test_*.py,contracts/{cache,out,lib}/**,{dashboard,frontend}/node_modules/**,{detector/bench,blockchain,network,store,demo,public,learning/tests,zk/tests}/**}"
     }
   },
