@@ -1,6 +1,6 @@
 # ClawGuard
 
-Security middleware for OpenClaw agents. Defends against prompt injection attacks across text, images, PDFs, and audio. Shares threat intel on-chain via Base Sepolia.
+Security middleware for OpenClaw agents. Defends against prompt injection attacks across text, images, PDFs, and audio. Shares threat intel on-chain via Base Sepolia..
 
 Built for a hackathon demo. Parts are production-grade (detection pipeline,
 migrations, CSP, Prometheus, admin-auth on audit + metrics); parts are
