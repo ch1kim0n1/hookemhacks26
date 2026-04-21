@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "uv pip install --system --no-cache-dir -e . && (cd frontend 2>/dev/null || cd dashboard; npm ci)",
-  "buildCommand": "(cd frontend 2>/dev/null || cd dashboard; npm run build && mkdir -p ../public && cp -r dist/* ../public/)",
+  "installCommand": "uv pip install --system --no-cache-dir -e . && cd frontend && npm ci",
+  "buildCommand": "cd frontend && npm run build && mkdir -p ../public && cp -r dist/* ../public/",
   "functions": {
     "api/**/*.py": {
       "excludeFiles": "{.git/**,.worktrees/**,.venv/**,**/{__pycache__,.pytest_cache,tests}/**,**/*.pyc,**/test_*.py,contracts/{cache,out,lib}/**,{dashboard,frontend}/node_modules/**,{detector/bench,blockchain,network,store,demo,public,learning/tests,zk/tests}/**}"
